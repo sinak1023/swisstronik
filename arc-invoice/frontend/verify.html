@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify invoice — Attestra on Arc</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d8ee9' stroke-width='1.5'><path d='M12 2L2 7l10 5 10-5-10-5z'/></svg>" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap nav">
+      <a class="brand" href="./index.html">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Attestra <span class="tag">on Arc</span>
+      </a>
+      <nav class="nav-links">
+        <a href="./issue.html">Issue</a>
+        <a href="./dashboard.html">My invoices</a>
+        <button class="btn btn-ghost" id="connectBtn">Connect wallet</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap" style="max-width: 760px; padding-top: 40px;">
+
+    <!-- lookup (shown when no ?id) -->
+    <div class="card" id="cardLookup">
+      <h2 class="mt-0">Verify an invoice</h2>
+      <p class="desc">Enter the invoice ID (or open the QR link your supplier shared).</p>
+      <div class="row" style="align-items:flex-end;">
+        <div class="field" style="margin-bottom:0;"><label>Invoice ID</label><input type="number" id="lookupId" placeholder="1" min="1" /></div>
+        <button class="btn btn-primary" id="lookupBtn" style="flex:0 0 auto;">Verify</button>
+      </div>
+    </div>
+
+    <!-- loading -->
+    <div class="card hidden" id="cardLoading">
+      <h2 class="mt-0">Reading from Arc…</h2>
+      <p class="desc" id="loadDesc">Fetching invoice data directly from the chain.</p>
+      <div class="progress"><div id="loadBar"></div></div>
+      <div class="log" id="loadLog"></div>
+    </div>
+
+    <!-- result -->
+    <div class="card hidden" id="cardInvoice">
+      <div class="verify-head">
+        <span class="pill" id="authPill"><span class="dot"></span><span id="authText"></span></span>
+        <span class="pill warn hidden" id="paidPill"><span class="dot"></span>Paid</span>
+      </div>
+
+      <h2 class="mt-0" id="invTitle">Invoice</h2>
+
+      <div class="preview" id="preview"></div>
+
+      <dl class="kv">
+        <dt>Invoice number</dt><dd id="mNumber">—</dd>
+        <dt>Customer</dt><dd id="mCustomer">—</dd>
+        <dt>Note</dt><dd id="mNote">—</dd>
+        <dt>Issuer (on-chain)</dt><dd id="mIssuer">—</dd>
+        <dt>Sealed at</dt><dd id="mDate">—</dd>
+        <dt>File fingerprint</dt><dd id="mHash" style="font-family:'Space Grotesk',monospace;font-size:12px;">—</dd>
+        <dt>Recomputed hash</dt><dd id="mRecomputed" style="font-family:'Space Grotesk',monospace;font-size:12px;">—</dd>
+      </dl>
+
+      <div class="hero-actions" style="margin-bottom:8px;">
+        <button class="btn btn-ghost" id="downloadBtn">Download original file</button>
+        <a class="btn btn-ghost" id="viewTxAddr" target="_blank" rel="noopener">View on arcscan</a>
+      </div>
+
+      <!-- payment section -->
+      <div id="paySection" class="hidden" style="border-top:1px solid var(--border);margin-top:24px;padding-top:22px;">
+        <h2 style="font-size:18px;">Pay this invoice</h2>
+        <div class="cost">
+          <div class="line"><span class="muted">Amount due</span><span id="pDue">—</span></div>
+          <div class="line"><span class="muted">Goes to issuer</span><span id="pIssuer">—</span></div>
+          <div class="line"><span class="muted">Platform fee</span><span id="pFee">—</span></div>
+          <div class="line total"><span>You pay</span><span id="pTotal">—</span></div>
+        </div>
+        <div class="hint">Paid in native USDC on Arc. The contract splits the payment atomically — funds never touch a server.</div>
+        <button class="btn btn-primary btn-block" id="payBtn" style="margin-top:14px;">Connect wallet to pay</button>
+        <div class="log hidden" id="payLog" style="margin-top:14px;"></div>
+      </div>
+    </div>
+
+    <!-- error -->
+    <div class="card hidden" id="cardError">
+      <span class="pill bad"><span class="dot"></span>Not found</span>
+      <h2 style="margin-top:14px;">We couldn't load that invoice</h2>
+      <p class="muted" id="errMsg"></p>
+      <a class="btn btn-ghost" href="./verify.html">Try another ID</a>
+    </div>
+  </main>
+
+  <footer class="site"><div class="wrap"><div>Attestra — Arc testnet demo. Read access needs no wallet.</div><div><a href="https://testnet.arcscan.app" target="_blank" rel="noopener">arcscan</a></div></div></footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="./vendor/ethers.umd.min.js"></script>
+  <script src="./vendor/pako.min.js"></script>
+  <script type="module" src="./src/verify.js"></script>
+</body>
+</html>

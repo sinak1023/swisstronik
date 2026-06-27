@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Issue invoice — Attestra on Arc</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d8ee9' stroke-width='1.5'><path d='M12 2L2 7l10 5 10-5-10-5z'/></svg>" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap nav">
+      <a class="brand" href="./index.html">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Attestra <span class="tag">on Arc</span>
+      </a>
+      <nav class="nav-links">
+        <a href="./verify.html">Verify</a>
+        <a href="./dashboard.html">My invoices</a>
+        <button class="btn btn-ghost" id="connectBtn">Connect wallet</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap" style="max-width: 720px; padding-top: 40px;">
+    <h1 style="font-family:'Space Grotesk';font-weight:300;font-size:34px;letter-spacing:-0.02em;margin:0 0 6px;">Issue an invoice</h1>
+    <p class="muted" style="margin-top:0;">Seal it on Arc, get a QR your customer can verify and pay.</p>
+
+    <!-- STEP 1: file -->
+    <div class="card" id="cardFile">
+      <h2 class="mt-0">1 · The invoice file</h2>
+      <p class="desc">Text or image (PDF, PNG, JPG, TXT…). Processed entirely in your browser. Max 5 MB.</p>
+      <div class="drop" id="drop">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="big">Drop your invoice here</div>
+        <div class="small">or click to browse</div>
+        <input type="file" id="fileInput" class="hidden" />
+      </div>
+      <div id="fileSummary" class="hidden">
+        <div class="chips">
+          <span class="chip">File: <b id="sName"></b></span>
+          <span class="chip">Type: <b id="sType"></b></span>
+          <span class="chip">Original: <b id="sOrig"></b></span>
+          <span class="chip">Compressed: <b id="sComp"></b></span>
+          <span class="chip">On-chain chunks: <b id="sChunks"></b></span>
+        </div>
+        <div class="field" style="margin-top:16px;">
+          <label>File fingerprint (keccak256)</label>
+          <div class="addr-mono" id="sHash"></div>
+          <div class="hint">This is sealed on-chain. Any change to the file produces a different fingerprint.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: details -->
+    <div class="card" id="cardDetails">
+      <h2 class="mt-0">2 · Invoice details</h2>
+      <p class="desc">Stored on-chain as metadata next to the file. All optional except what you want shown.</p>
+      <div class="row">
+        <div class="field"><label>Invoice number</label><input type="text" id="invNumber" placeholder="2026-001" /></div>
+        <div class="field"><label>Customer</label><input type="text" id="invCustomer" placeholder="Globex Corp" /></div>
+      </div>
+      <div class="field"><label>Note (optional)</label><textarea id="invNote" placeholder="Consulting services, Q2 2026"></textarea></div>
+
+      <div class="field">
+        <div class="toggle"><input type="checkbox" id="enablePay" /><label for="enablePay" style="margin:0;">Enable on-chain payment (let the customer pay this invoice in USDC)</label></div>
+      </div>
+      <div class="row" id="payFields" style="display:none;">
+        <div class="field"><label>Amount due (USDC)</label><input type="number" id="invAmount" placeholder="100.00" min="0" step="0.01" /></div>
+        <div class="field"><label>You receive</label><input type="text" id="invNet" disabled placeholder="—" /><div class="hint" id="feeHint"></div></div>
+      </div>
+    </div>
+
+    <!-- STEP 3: cost + submit -->
+    <div class="card" id="cardSubmit">
+      <h2 class="mt-0">3 · Review & seal on Arc</h2>
+      <p class="desc">We estimate the exact USDC gas cost before anything is written on-chain.</p>
+
+      <div class="warnbox" id="needWallet">Connect your wallet (top right) to estimate the cost and register.</div>
+
+      <div id="costBox" class="hidden">
+        <div class="cost">
+          <div class="line"><span class="muted">Storage chunks (SSTORE2)</span><span id="cChunks">—</span></div>
+          <div class="line"><span class="muted">Estimated gas</span><span id="cGas">—</span></div>
+          <div class="line total"><span>Estimated cost</span><span id="cTotal">—</span></div>
+        </div>
+        <div class="hint">On Arc, gas is paid in USDC and is dollar-denominated, so this estimate is stable.</div>
+      </div>
+
+      <button class="btn btn-primary btn-block" id="estimateBtn" style="margin-top:14px;" disabled>Estimate cost</button>
+      <button class="btn btn-primary btn-block hidden" id="sealBtn" style="margin-top:14px;">Pay & seal on Arc</button>
+
+      <div class="log hidden" id="log" style="margin-top:16px;"></div>
+    </div>
+
+    <!-- RESULT -->
+    <div class="card result hidden" id="cardResult">
+      <span class="pill ok"><span class="dot"></span>Sealed on Arc</span>
+      <h2 style="margin-top:16px;">Invoice #<span id="rId"></span> is live on-chain</h2>
+      <p class="muted">Share this QR or link. Anyone who opens it can verify authenticity — and pay, if you enabled it.</p>
+      <div class="qrbox"><canvas id="qr"></canvas></div>
+      <div class="field"><label>Verify link</label><div class="addr-mono" id="rLink"></div></div>
+      <div class="hero-actions center" style="justify-content:center;margin-top:18px;">
+        <button class="btn btn-ghost" id="copyLink">Copy link</button>
+        <a class="btn btn-ghost" id="rTx" target="_blank" rel="noopener">View transaction</a>
+        <a class="btn btn-primary" id="rOpen" target="_blank" rel="noopener">Open verify page</a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site"><div class="wrap"><div>Attestra — Arc testnet demo. Testnet USDC has no real value.</div><div><a href="https://faucet.circle.com" target="_blank" rel="noopener">Need testnet USDC?</a></div></div></footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="./vendor/ethers.umd.min.js"></script>
+  <script src="./vendor/pako.min.js"></script>
+  <script src="./vendor/qrcode.min.js"></script>
+  <script type="module" src="./src/issue.js"></script>
+</body>
+</html>

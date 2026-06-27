@@ -1,0 +1,15 @@
+{
+  "abi": [
+    {
+      "inputs": [],
+      "name": "OutOfBounds",
+      "type": "error"
+    },
+    {
+      "inputs": [],
+      "name": "WriteError",
+      "type": "error"
+    }
+  ],
+  "bytecode": "0x6080806040523460175760399081601c823930815050f35b5f80fdfe5f80fdfea2646970667358221220e0d1c8f553fa1831eadb7df97f91a5ca4417d881428c23084630b2000ab0ad5964736f6c63430008180033"
+}

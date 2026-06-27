@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Attestra — On-chain invoice authenticity & settlement on Arc</title>
+  <meta name="description" content="Put invoices on-chain on Circle's Arc network. Instant authenticity verification and atomic USDC settlement. No server stores your files." />
+  <link rel="stylesheet" href="./src/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d8ee9' stroke-width='1.5'><path d='M12 2L2 7l10 5 10-5-10-5z'/><path d='M2 17l10 5 10-5'/><path d='M2 12l10 5 10-5'/></svg>" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap nav">
+      <a class="brand" href="./index.html">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" />
+        </svg>
+        Attestra <span class="tag">on Arc</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#how">How it works</a>
+        <a href="#why">Why on-chain</a>
+        <a href="./verify.html">Verify an invoice</a>
+        <a href="./dashboard.html">My invoices</a>
+        <a class="btn btn-primary" href="./issue.html">Issue invoice</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero wrap">
+      <div class="eyebrow">Invoice authenticity · Atomic USDC settlement</div>
+      <h1>Invoices that <b>prove themselves</b> — and settle in one transaction.</h1>
+      <p class="lead">
+        Attestra writes each invoice directly onto Circle's Arc network: the file, its
+        fingerprint, and an optional pay button all live on-chain. Anyone can verify an
+        invoice is authentic and pay it in native USDC — with the platform fee split
+        atomically by the contract. Your files never sit on our server.
+      </p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="./issue.html">Issue an invoice →</a>
+        <a class="btn btn-ghost" href="./verify.html">Verify one</a>
+      </div>
+    </section>
+
+    <section class="section wrap" id="how">
+      <h2>How it works</h2>
+      <p class="sub">Three steps for the issuer, one scan for the customer.</p>
+      <div class="grid">
+        <div class="cell">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <h3>Upload & seal</h3>
+          <p>Your browser hashes the invoice, compresses it, and splits it into chunks. Nothing is uploaded to a server — bytes go straight to the contract.</p>
+        </div>
+        <div class="cell">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+          <h3>Register on Arc</h3>
+          <p>We show the exact USDC cost up front. On confirm, the file is stored on-chain via SSTORE2 and you get a verify link plus a QR code.</p>
+        </div>
+        <div class="cell">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+          <h3>Verify & settle</h3>
+          <p>Your customer scans the QR, sees the invoice rebuilt from chain data with a green “authentic” check, and can pay in USDC — settled instantly.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section wrap" id="why">
+      <h2>Why put it on-chain?</h2>
+      <p class="sub">Invoice fraud — forged, altered, or double-paid invoices — is a costly, everyday problem. Arc is built for exactly this kind of financial settlement.</p>
+      <div class="grid">
+        <div class="cell">
+          <h3>Tamper-proof</h3>
+          <p>The original file's keccak256 fingerprint is sealed on-chain. Change a single pixel or digit and verification fails instantly.</p>
+        </div>
+        <div class="cell">
+          <h3>Survives your server</h3>
+          <p>Because the file itself is stored on Arc, the invoice stays verifiable even if your company or website goes away.</p>
+        </div>
+        <div class="cell">
+          <h3>Atomic settlement</h3>
+          <p>Payment and fee-split happen in a single transaction. Funds go straight from customer to issuer — the platform never custodies money.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site">
+    <div class="wrap">
+      <div>Attestra — a demo dApp built on Circle's Arc testnet. Testnet USDC has no real-world value.</div>
+      <div>Chain ID 5042002 · <a href="https://testnet.arcscan.app" target="_blank" rel="noopener">arcscan</a> · <a href="https://faucet.circle.com" target="_blank" rel="noopener">faucet</a></div>
+    </div>
+  </footer>
+</body>
+</html>

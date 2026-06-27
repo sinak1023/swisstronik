@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My invoices — Attestra on Arc</title>
+  <link rel="stylesheet" href="./src/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234d8ee9' stroke-width='1.5'><path d='M12 2L2 7l10 5 10-5-10-5z'/></svg>" />
+</head>
+<body>
+  <header class="site">
+    <div class="wrap nav">
+      <a class="brand" href="./index.html">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        Attestra <span class="tag">on Arc</span>
+      </a>
+      <nav class="nav-links">
+        <a href="./issue.html">Issue</a>
+        <a href="./verify.html">Verify</a>
+        <a href="./dashboard.html" class="active">My invoices</a>
+        <button class="btn btn-ghost" id="connectBtn">Connect wallet</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap" style="max-width: 960px; padding-top: 40px;">
+    <div class="dash-head">
+      <div>
+        <h1 style="font-family:'Space Grotesk';font-weight:300;font-size:34px;letter-spacing:-0.02em;margin:0 0 6px;">My invoices</h1>
+        <p class="muted" id="dashSub" style="margin-top:0;">Every invoice issued from your connected wallet, with live settlement status.</p>
+      </div>
+      <button class="btn btn-ghost hidden" id="refreshBtn">Refresh</button>
+    </div>
+
+    <!-- not connected -->
+    <div class="card" id="cardConnect">
+      <h2 class="mt-0">Connect your wallet</h2>
+      <p class="desc">Your invoice history is read straight from Arc using your wallet address. Nothing is stored on a server.</p>
+      <button class="btn btn-primary" id="connectBtn2">Connect wallet</button>
+    </div>
+
+    <!-- loading -->
+    <div class="card hidden" id="cardLoading">
+      <h2 class="mt-0">Reading your invoices from Arc…</h2>
+      <p class="desc" id="loadDesc">Scanning registration events for your address.</p>
+      <div class="progress"><div id="loadBar"></div></div>
+    </div>
+
+    <!-- stats -->
+    <div class="stats hidden" id="stats">
+      <div class="stat"><div class="stat-label">Invoices issued</div><div class="stat-val" id="stCount">0</div></div>
+      <div class="stat"><div class="stat-label">Payable</div><div class="stat-val" id="stPayable">0</div></div>
+      <div class="stat"><div class="stat-label">Settled</div><div class="stat-val" id="stPaid">0</div></div>
+      <div class="stat"><div class="stat-label">Outstanding (USDC)</div><div class="stat-val" id="stOutstanding">0</div></div>
+    </div>
+
+    <!-- empty -->
+    <div class="card hidden" id="cardEmpty">
+      <h2 class="mt-0">No invoices yet</h2>
+      <p class="desc">You haven't issued any invoices from this wallet.</p>
+      <a class="btn btn-primary" href="./issue.html">Issue your first invoice →</a>
+    </div>
+
+    <!-- list -->
+    <div class="hidden" id="listWrap">
+      <div class="inv-list" id="invList"></div>
+    </div>
+
+    <!-- error -->
+    <div class="card hidden" id="cardError">
+      <span class="pill bad"><span class="dot"></span>Couldn't load</span>
+      <h2 style="margin-top:14px;">We couldn't load your invoices</h2>
+      <p class="muted" id="errMsg"></p>
+      <button class="btn btn-ghost" id="retryBtn">Try again</button>
+    </div>
+  </main>
+
+  <footer class="site"><div class="wrap"><div>Attestra — Arc testnet demo. Read access needs no wallet.</div><div><a href="https://testnet.arcscan.app" target="_blank" rel="noopener">arcscan</a></div></div></footer>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="./vendor/ethers.umd.min.js"></script>
+  <script type="module" src="./src/dashboard.js"></script>
+</body>
+</html>

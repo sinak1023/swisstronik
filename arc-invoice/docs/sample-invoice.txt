@@ -1,0 +1,32 @@
+INVOICE  #2026-001
+================================================================
+
+From:     Acme Consulting LLC
+          123 Market Street, Suite 400
+          San Francisco, CA 94103
+          billing@acme.example
+
+Bill to:  Globex Corporation
+          500 Industrial Parkway
+          Austin, TX 78701
+
+Date issued:  2026-04-15
+Due date:     2026-05-15
+Currency:     USDC
+
+----------------------------------------------------------------
+Description                          Qty     Rate        Amount
+----------------------------------------------------------------
+Strategy consulting (April)           40     150.00      6,000.00
+Onsite workshop                        1     2,000.00     2,000.00
+Documentation & handover               1     1,000.00     1,000.00
+----------------------------------------------------------------
+                                            Subtotal      9,000.00
+                                            Tax (0%)          0.00
+                                            TOTAL         9,000.00 USDC
+----------------------------------------------------------------
+
+Payment: Pay on-chain in USDC via the Attestra verify link.
+
+This invoice is sealed on Circle's Arc network. Scan the QR code
+to verify its authenticity against the on-chain fingerprint.

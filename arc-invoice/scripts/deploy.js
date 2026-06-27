@@ -16,9 +16,23 @@ const FEE_BPS = parseInt(process.env.FEE_BPS || "200", 10); // default 2%
 
 async function main() {
   if (!PRIVATE_KEY) throw new Error("Set PRIVATE_KEY in .env");
+  // Validate fee config up front so a malformed address fails with a clear message
+  // instead of ethers trying (and failing) to resolve it as an ENS name on a chain
+  // that has no ENS.
+  if (FEE_RECIPIENT && FEE_RECIPIENT.trim() && !ethers.isAddress(FEE_RECIPIENT.trim())) {
+    throw new Error(
+      `FEE_RECIPIENT in .env is not a valid address: "${FEE_RECIPIENT}". ` +
+        `It must be a 0x-prefixed 40-hex-char address. Fix it, or leave it blank to ` +
+        `default to the deployer.`
+    );
+  }
+  if (!Number.isInteger(FEE_BPS) || FEE_BPS < 0 || FEE_BPS > 500) {
+    throw new Error(`FEE_BPS must be an integer between 0 and 500 (got "${process.env.FEE_BPS}").`);
+  }
+
   const provider = new ethers.JsonRpcProvider(RPC_URL, { chainId: 5042002, name: "arc-testnet" });
   const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-  const feeRecipient = FEE_RECIPIENT || wallet.address;
+  const feeRecipient = ethers.getAddress((FEE_RECIPIENT && FEE_RECIPIENT.trim()) || wallet.address);
 
   console.log("Deployer     :", wallet.address);
   console.log("Fee recipient:", feeRecipient);

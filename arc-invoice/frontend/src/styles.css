@@ -252,6 +252,12 @@ footer.site .wrap { display: flex; justify-content: space-between; flex-wrap: wr
 .net-dot.bad { background: #ffd166; box-shadow: 0 0 0 2px color-mix(in srgb, #ffd166 30%, transparent); }
 #connectBtn[data-state="wrongnet"] { background: var(--warn); color: #fff; }
 
+/* ---------- wrong-network banner ---------- */
+.net-banner { position: sticky; top: 64px; z-index: 40; background: var(--warn-wash); border-bottom: 1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+.net-banner-inner { max-width: var(--maxw); margin: 0 auto; padding: 10px 24px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+.net-banner-msg { font-size: 14px; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+.net-banner .net-dot.bad { background: var(--warn); box-shadow: none; }
+
 /* ---------- wallet modal ---------- */
 .wallet-modal-overlay {
   position: fixed; inset: 0; z-index: 200;

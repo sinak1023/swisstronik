@@ -115,6 +115,13 @@ export function openWalletModal() {
       try {
         await wallet.connect(w);
         finish(resolve, wallet.snapshot());
+        // Account is connected and the modal is closed. If we're not on Arc, kick off
+        // the add/switch prompt right away — but never block the connection on it.
+        if (!wallet.onArc) {
+          wallet
+            .ensureArc()
+            .catch((err) => notify(err?.message || "Switch to Arc Testnet to continue."));
+        }
       } catch (e) {
         list.querySelectorAll(".wallet-row").forEach((b) => (b.disabled = false));
         notify(e?.message || "Connection failed");
@@ -154,6 +161,7 @@ export function openWalletModal() {
  */
 export function mountWalletButton(btn, { onChange } = {}) {
   if (!btn) return () => {};
+  ensureNetworkBanner(); // any page with a wallet button gets the wrong-network guide
 
   const paint = () => {
     const s = wallet.snapshot();
@@ -202,6 +210,57 @@ export function mountWalletButton(btn, { onChange } = {}) {
     btn.removeEventListener("click", handleClick);
     off();
   };
+}
+
+// ---------------------------------------------------------------------------
+// Wrong-network banner
+// ---------------------------------------------------------------------------
+//
+// When a wallet is connected but on the wrong chain, show a prominent bar with a
+// one-click "Add / switch to Arc Testnet" button (adds the network if missing).
+
+let _banner = null;
+function ensureNetworkBanner() {
+  if (_banner) return _banner;
+  const bar = document.createElement("div");
+  bar.className = "net-banner hidden";
+  bar.innerHTML = `
+    <div class="net-banner-inner">
+      <span class="net-banner-msg">
+        <span class="net-dot bad"></span>
+        This dApp runs on <b>Arc Testnet</b> — your wallet is on a different network.
+      </span>
+      <button class="btn btn-primary btn-sm" id="netAddBtn">Add / switch to Arc Testnet</button>
+    </div>`;
+  const header = document.querySelector("header.site");
+  if (header && header.parentNode) header.insertAdjacentElement("afterend", bar);
+  else document.body.prepend(bar);
+
+  const btn = bar.querySelector("#netAddBtn");
+  btn.addEventListener("click", async () => {
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Check your wallet…';
+    try {
+      await wallet.ensureArc();
+      notify("Connected to Arc Testnet");
+    } catch (e) {
+      notify(e?.message || "Couldn't switch network");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = original;
+    }
+  });
+
+  const paint = () => {
+    const s = wallet.snapshot();
+    bar.classList.toggle("hidden", !(s.connected && !s.onArc));
+  };
+  wallet.addEventListener("change", paint);
+  paint();
+
+  _banner = bar;
+  return bar;
 }
 
 // ---------------------------------------------------------------------------

@@ -185,9 +185,10 @@ class WalletSession extends EventTarget {
     const accounts = await raw.request({ method: "eth_requestAccounts" });
     if (!accounts || accounts.length === 0) throw new Error("No accounts authorized.");
 
+    // Connect the ACCOUNT first and emit immediately, so the UI never hangs waiting
+    // on a network switch. Switching/adding Arc is handled separately (and is allowed
+    // to fail gracefully) — the wrong-network banner then guides the user.
     this._bind(detail.info.rdns, raw);
-    await ensureArcNetwork(raw);
-
     this.address = ethers.getAddress(accounts[0]);
     this.provider = new ethers.BrowserProvider(raw);
     this.signer = await this.provider.getSigner();
@@ -306,35 +307,63 @@ export async function connectWallet() {
   return { provider: wallet.provider, signer: wallet.signer, address: wallet.address };
 }
 
+// Some wallets nest the real EIP-1193 error code (e.g. 4902 / 4001) under
+// err.data.originalError.code or err.cause.code — dig it out.
+function errCode(err) {
+  return (
+    err?.code ??
+    err?.data?.originalError?.code ??
+    err?.cause?.code ??
+    err?.error?.code ??
+    null
+  );
+}
+
+const ARC_ADD_PARAMS = () => ({
+  chainId: CHAIN.chainIdHex,
+  chainName: "Arc Testnet",
+  rpcUrls: [CHAIN.rpcUrl],
+  nativeCurrency: CHAIN.nativeCurrency,
+  blockExplorerUrls: CHAIN.explorer ? [CHAIN.explorer] : [],
+});
+
+/**
+ * Ensure the wallet is on Arc Testnet, adding the network if it's missing.
+ * Strategy: try to SWITCH; if that fails for any reason other than an explicit
+ * user rejection, try to ADD it (which also switches). This is far more robust
+ * across wallets than only special-casing error 4902.
+ */
 export async function ensureArcNetwork(raw) {
   const eth = raw || (typeof window !== "undefined" ? window.ethereum : null);
   if (!eth) throw new Error("No wallet provider available.");
+
   const currentHex = await eth.request({ method: "eth_chainId" });
   if (parseInt(currentHex, 16) === CHAIN.chainId) return;
+
   try {
     await eth.request({
       method: "wallet_switchEthereumChain",
       params: [{ chainId: CHAIN.chainIdHex }],
     });
+    return;
   } catch (err) {
-    // 4902 = chain not added yet; some wallets wrap it as -32603.
-    if (err && (err.code === 4902 || err.code === -32603)) {
+    if (errCode(err) === 4001) {
+      throw new Error("Network switch rejected. Switch to Arc Testnet to continue.");
+    }
+    // 4902 (unknown chain) or anything else → try to add the chain (this also switches).
+    try {
       await eth.request({
         method: "wallet_addEthereumChain",
-        params: [
-          {
-            chainId: CHAIN.chainIdHex,
-            chainName: "Arc Testnet",
-            rpcUrls: [CHAIN.rpcUrl],
-            nativeCurrency: CHAIN.nativeCurrency,
-            blockExplorerUrls: [CHAIN.explorer],
-          },
-        ],
+        params: [ARC_ADD_PARAMS()],
       });
-    } else if (err && err.code === 4001) {
-      throw new Error("Network switch rejected. Please switch to Arc Testnet.");
-    } else {
-      throw err;
+    } catch (addErr) {
+      if (errCode(addErr) === 4001) {
+        throw new Error("Adding Arc Testnet was rejected in your wallet.");
+      }
+      throw new Error(
+        "Couldn't add Arc Testnet automatically. Add it manually — Network name: Arc Testnet, " +
+          `RPC URL: ${CHAIN.rpcUrl}, Chain ID: ${CHAIN.chainId}, Symbol: USDC.`
+      );
     }
   }
 }

@@ -213,6 +213,10 @@ if (window.history.replaceState) {
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm font-medium text-text mb-2">آیدی عددی تلگرام (برای ارسال نوتیف)</label>
+                <input id="add_telegram_chat_id" name="telegram_chat_id" type="text" dir="ltr" class="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-text" placeholder="مثلاً 123456789">
+            </div>
             <div class="flex justify-end gap-3 mt-6">
                 <button type="button" onclick="$('#addUserModal').addClass('hidden')" class="px-5 py-2.5 bg-muted hover:bg-muted/80 text-text rounded-lg font-medium transition-colors">
                     انصراف
@@ -260,6 +264,10 @@ if (window.history.replaceState) {
                         <option value="<?= $role['id'] ?>"><?= htmlspecialchars($role['name']) ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-text mb-2">آیدی عددی تلگرام (برای ارسال نوتیف)</label>
+                <input id="edit_telegram_chat_id" name="telegram_chat_id" type="text" dir="ltr" class="w-full px-4 py-2.5 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-background text-text" placeholder="مثلاً 123456789">
             </div>
             <div class="flex justify-end gap-3 mt-6">
                 <button type="button" onclick="$('#editUserModal').addClass('hidden')" class="px-5 py-2.5 bg-muted hover:bg-muted/80 text-text rounded-lg font-medium transition-colors">
@@ -430,6 +438,7 @@ if (window.history.replaceState) {
                 $('#edit_phone').val(user.phone || '');
                 $('#edit_email').val(user.email || '');
                 $('#edit_role_id').val(user.role_id || '');
+                $('#edit_telegram_chat_id').val(user.telegram_chat_id || '');
                 $('#editUserModal').removeClass('hidden');
             } else {
                 showSnackbar(data.error, 'error');
@@ -526,7 +535,8 @@ if (window.history.replaceState) {
             phone: $('#add_phone').val().trim(),
             email: $('#add_email').val().trim(),
             password: $('#add_password').val(),
-            role_id: $('#add_role_id').val()
+            role_id: $('#add_role_id').val(),
+            telegram_chat_id: $('#add_telegram_chat_id').val().trim()
         };
 
         $.post('apis/add_user.php', data, function(response) {
@@ -552,7 +562,8 @@ if (window.history.replaceState) {
             name: $('#edit_name').val().trim(),
             phone: $('#edit_phone').val().trim(),
             email: $('#edit_email').val().trim(),
-            role_id: $('#edit_role_id').val()
+            role_id: $('#edit_role_id').val(),
+            telegram_chat_id: $('#edit_telegram_chat_id').val().trim()
         };
 
         $.post('apis/edit_user.php', data, function(response) {

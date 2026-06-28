@@ -12,8 +12,8 @@ class Users
 
     public function add($data)
     {
-        $sql = "INSERT INTO {$this->table} (`name`, `email`, `phone`, `password`, `created_at`, `updated_at`, `role_id`, `permissions`) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-        $params = [$data['name'], $data['email'], $data['phone'], $data['password'],  date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $data['role_id'], $data['permissions']];
+        $sql = "INSERT INTO {$this->table} (`name`, `email`, `phone`, `password`, `created_at`, `updated_at`, `role_id`, `permissions`, `telegram_chat_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $params = [$data['name'], $data['email'], $data['phone'], $data['password'],  date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $data['role_id'], $data['permissions'], $data['telegram_chat_id'] ?? null];
         $this->db->execute($sql, $params);
         return $this->db->lastInsertId();
     }

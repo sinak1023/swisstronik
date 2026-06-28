@@ -51,7 +51,8 @@ $data = [
     'name'        => $name,
     'phone'       => $phone,
     'email'       => $email,
-    'role_id'     => $role_id ?: null
+    'role_id'     => $role_id ?: null,
+    'telegram_chat_id' => trim($_POST['telegram_chat_id'] ?? '') ?: null
 ];
 
 if ($password) {

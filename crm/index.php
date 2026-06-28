@@ -1,5 +1,11 @@
 <?php
-session_start();
+// طولانی‌کردن عمر نشست تا کاربر زود از سیستم خارج نشود (۲۴ ساعت)
+@ini_set('session.gc_maxlifetime', 86400);
+@ini_set('session.cookie_lifetime', 86400);
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params(86400);
+    session_start();
+}
 ini_set('display_errors', 0);
 require('config.php');
 $root = "";

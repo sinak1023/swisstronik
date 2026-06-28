@@ -4,15 +4,31 @@ error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE & ~E_DEPRECATED);
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 
+// در صورت بروز خطای کشنده (Fatal)، خروجی JSON معتبر برگردانده شود
+register_shutdown_function(function () {
+    $err = error_get_last();
+    if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR])) {
+        if (!headers_sent()) {
+            header('Content-Type: application/json; charset=utf-8');
+        }
+        echo json_encode(["ok" => false, "error" => "خطای سرور در پردازش فایل: " . $err['message']]);
+    }
+});
+
+// سازگاری با PHP 7 (در صورت نبودن این توابع)
+if (!function_exists('str_starts_with')) {
+    function str_starts_with($haystack, $needle) { return $needle === '' || strpos($haystack, $needle) === 0; }
+}
+if (!function_exists('str_ends_with')) {
+    function str_ends_with($haystack, $needle) { return $needle === '' || substr($haystack, -strlen($needle)) === $needle; }
+}
+
 if (!isset($_SESSION["id"])) {
     echo json_encode(["ok" => false, "error" => "وارد حساب کاربری شوید"]);
     exit();
 }
 
 require_once '../config.php';
-require_once '../vendor/autoload.php';
-
-use PhpOffice\PhpSpreadsheet\IOFactory;
 
 // دسترسی
 $users_function = new Users($db);
@@ -38,7 +54,16 @@ if (!$project || ($project['created_by'] != $_SESSION["id"] && $admin_info['role
 }
 
 if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-    echo json_encode(["ok" => false, "error" => "فایل آپلود نشد"]);
+    $upload_errors = [
+        UPLOAD_ERR_INI_SIZE => 'حجم فایل از حد مجاز سرور بیشتر است',
+        UPLOAD_ERR_FORM_SIZE => 'حجم فایل بیش از حد مجاز است',
+        UPLOAD_ERR_PARTIAL => 'فایل به‌صورت ناقص آپلود شد',
+        UPLOAD_ERR_NO_FILE => 'فایلی انتخاب نشد',
+        UPLOAD_ERR_NO_TMP_DIR => 'پوشهٔ موقت سرور موجود نیست',
+        UPLOAD_ERR_CANT_WRITE => 'خطا در نوشتن فایل روی سرور',
+    ];
+    $code = $_FILES['file']['error'] ?? UPLOAD_ERR_NO_FILE;
+    echo json_encode(["ok" => false, "error" => $upload_errors[$code] ?? "فایل آپلود نشد"]);
     exit();
 }
 
@@ -48,13 +73,17 @@ $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
 $tmp_path = $file['tmp_name'];
 $content = file_get_contents($tmp_path);
 
+// حذف BOM ابتدای فایل (یونی‌کد)
+$content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
+
 $preview = !empty($_POST['preview']);
 $name_columns = $_POST['name_columns'] ?? [];
 if (is_string($name_columns)) $name_columns = json_decode($name_columns, true) ?? [];
-$name_columns = array_map('intval', array_filter($name_columns, 'is_numeric'));
+$name_columns = array_map('intval', array_filter((array)$name_columns, 'is_numeric'));
 
 $phone_column = $_POST['phone_column'] ?? null;
-if (is_string($phone_column)) $phone_column = (int)$phone_column;
+if (is_string($phone_column) && $phone_column !== '') $phone_column = (int)$phone_column;
+else if ($phone_column === '') $phone_column = null;
 
 $ignore_name = !empty($_POST['ignore_name']);
 $delimiter = $_POST['delimiter'] ?? null;
@@ -73,106 +102,113 @@ try {
     $headers = [];
     $dataRows = [];
 
-    // همه فرمت‌ها با PhpSpreadsheet یا پارس دستی
-    if (in_array($ext, ['xlsx', 'xls', 'csv'])) {
-        // اکسل و CSV با PhpSpreadsheet
-        $spreadsheet = IOFactory::load($tmp_path);
+    if (in_array($ext, ['xlsx', 'xls'])) {
+        // فقط برای اکسل به PhpSpreadsheet نیاز است
+        if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
+            echo json_encode(["ok" => false, "error" => "کتابخانهٔ خواندن اکسل (vendor) روی سرور موجود نیست. لطفاً فایل را به‌صورت CSV ذخیره و آپلود کنید."]);
+            exit();
+        }
+        require_once __DIR__ . '/../vendor/autoload.php';
+        if (!class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
+            echo json_encode(["ok" => false, "error" => "کتابخانهٔ اکسل ناقص است. لطفاً فایل را به‌صورت CSV آپلود کنید."]);
+            exit();
+        }
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmp_path);
         $sheet = $spreadsheet->getActiveSheet();
         $rows = $sheet->toArray(null, true, true, true);
-        $headers = array_values(array_map('trim', $rows[1] ?? []));
+        $headers = array_values(array_map(function ($v) { return trim((string)$v); }, $rows[1] ?? []));
         $dataRows = array_slice($rows, 2);
-    } elseif (in_array($ext, ['txt', 'db', 'sql'])) {
-        // TXT ساده یا SQL
-        if ($ext === 'txt') {
-            $is_txt = ($ext === 'txt');
-            $lines = array_filter(array_map('trim', explode("\n", $content)));
-            if (empty($lines)) {
-                echo json_encode(["ok" => false, "error" => "فایل خالی است"]);
-                exit();
-            }
-
-
-            if ($preview) {
-                $lines = array_slice(file($tmp_path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES), 0, 10);
-                $detected = $delimiter ?: detect_delimiter(implode("\n", $lines));
-                $sample = [];
-                foreach ($lines as $l) {
-                    $row = str_getcsv($l, $detected);
-                    $row = array_map('trim', $row);
-                    if (count($row) >= 1) $sample[] = $row;
-                    if (count($sample) >= 5) break;
-                }
-                echo json_encode([
-                    "ok" => true,
-                    "preview" => true,
-                    "headers" => [],
-                    "sample" => $sample,
-                    "delimiter" => $detected,
-                    "is_txt" => true
-                ]);
-                exit();
-            }
-
-
-            $delimiter = $_POST['delimiter'] ?? ',';
-            $has_name = !empty($_POST['has_name']);
-            $name_first = !empty($_POST['name_first']);
-
-            foreach ($lines as $line) {
-                if (empty(trim($line))) continue;
-                $row = str_getcsv($line, $delimiter);
-                $row = array_map('trim', $row);
-                $line_count++;
-
-                if (count($row) < 1) continue;
-
-                $phone = '';
-                $name = 'بینام';
-
-                if ($has_name && count($row) >= 2) {
-                    if ($name_first) {
-                        $name = $row[0];
-                        $phone = $row[1] ?? '';
-                    } else {
-                        $name = $row[1] ?? 'بینام';
-                        $phone = $row[0];
-                    }
-                } else {
-                    $phone = $row[0];
-                }
-
-                $phone = preg_replace('/[^0-9]/', '', $phone);
-                if (strlen($phone) < 10 || strlen($phone) > 15) {
-                    $skipped++;
-                    $errors[] = "شماره نامعتبر: $phone";
-                    continue;
-                }
-
-                if ($leads_func->phone_exists_in_project($project_id, $phone)) {
-                    $skipped++;
-                    continue;
-                }
-
-                $leads[] = ['name' => $name, 'phone' => $phone];
-            }
-
-            if (!$preview && !empty($leads)) $imported = $leads_func->import($project_id, $leads);
-            echo json_encode(["ok" => true, "imported" => $imported, "skipped" => $skipped, "total_lines" => $line_count]);
+    } elseif ($ext === 'csv') {
+        // CSV به‌صورت بومی (بدون نیاز به PhpSpreadsheet)
+        $csv_delim = $delimiter ?: detect_delimiter(substr($content, 0, 2000));
+        $all = [];
+        foreach (preg_split('/\r\n|\r|\n/', $content) as $line) {
+            if (trim($line) === '') continue;
+            $all[] = array_map('trim', str_getcsv($line, $csv_delim));
+        }
+        if (!empty($all)) {
+            $headers = array_map(function ($v) { return trim((string)$v); }, $all[0]);
+            $dataRows = array_slice($all, 1);
+        }
+    } elseif ($ext === 'txt') {
+        // TXT ساده (شماره‌ها پشت‌سرهم یا نام/شماره با جداکننده)
+        $lines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $content)), function ($l) { return $l !== ''; }));
+        if (empty($lines)) {
+            echo json_encode(["ok" => false, "error" => "فایل خالی است"]);
             exit();
         }
 
-        // SQL / DB
+        if ($preview) {
+            $detected = $delimiter ?: detect_delimiter(implode("\n", array_slice($lines, 0, 10)));
+            $sample = [];
+            foreach (array_slice($lines, 0, 5) as $l) {
+                $sample[] = array_map('trim', str_getcsv($l, $detected));
+            }
+            echo json_encode([
+                "ok" => true,
+                "preview" => true,
+                "headers" => [],
+                "sample" => $sample,
+                "delimiter" => $detected,
+                "is_txt" => true
+            ]);
+            exit();
+        }
+
+        $delimiter = $_POST['delimiter'] ?? ',';
+        $has_name = !empty($_POST['has_name']);
+        $name_first = !empty($_POST['name_first']);
+
+        foreach ($lines as $line) {
+            $row = array_map('trim', str_getcsv($line, $delimiter));
+            $line_count++;
+            if (count($row) < 1) continue;
+
+            $phone = '';
+            $name = 'بینام';
+            if ($has_name && count($row) >= 2) {
+                if ($name_first) { $name = $row[0]; $phone = $row[1] ?? ''; }
+                else { $name = $row[1] ?? 'بینام'; $phone = $row[0]; }
+            } else {
+                // اگر چند مقدار در یک خط بود، اولین مقدار عددی را شماره در نظر بگیر
+                $phone = $row[0];
+            }
+
+            $phone = clean_phone($phone);
+            if (strlen($phone) < 10 || strlen($phone) > 15) {
+                $skipped++;
+                continue;
+            }
+            if ($leads_func->phone_exists_in_project($project_id, $phone)) {
+                $skipped++;
+                continue;
+            }
+            $leads[] = ['name' => $name ?: 'بینام', 'phone' => $phone];
+        }
+
+        $cross_campaign = cross_campaign_report($db, $project_id, $leads);
+        if (!$preview && !empty($leads)) $imported = $leads_func->import($project_id, $leads);
+        echo json_encode([
+            "ok" => true,
+            "imported" => $imported,
+            "skipped" => $skipped,
+            "total_lines" => $line_count,
+            "cross_campaign_count" => count($cross_campaign),
+            "cross_campaign" => array_slice($cross_campaign, 0, 100)
+        ]);
+        exit();
+    } elseif (in_array($ext, ['sql', 'db'])) {
+        // استخراج INSERT ها از فایل SQL
         $inserts = [];
         $current = '';
         $in_string = false;
-        foreach (explode("\n", $content) as $line) {
+        foreach (preg_split('/\r\n|\r|\n/', $content) as $line) {
             $line = trim($line);
             if ($line === '' || str_starts_with($line, '--') || str_starts_with($line, '#')) continue;
-
             for ($i = 0; $i < strlen($line); $i++) {
                 if (!$in_string && ($line[$i] === "'" || $line[$i] === '"')) {
                     $in_string = true;
-                } elseif ($in_string && $line[$i] === $line[$i - 1] && $line[$i - 1] !== '\\') {
+                } elseif ($in_string && $i > 0 && $line[$i] === $line[$i - 1] && $line[$i - 1] !== '\\') {
                     $in_string = false;
                 }
             }
@@ -183,7 +219,6 @@ try {
                 $current = '';
             }
         }
-
         foreach ($inserts as $q) {
             if (preg_match('/INSERT\s+INTO\s+[`"\']?\w+[`"\']?\s*\((.*?)\)\s*VALUES\s*(.+)/is', $q, $m)) {
                 $cols = array_map('trim', explode(',', $m[1]));
@@ -191,7 +226,7 @@ try {
                 foreach ($vals[1] as $block) {
                     preg_match_all("/'([^'\\\\]*(?:\\\\.[^'\\\\]*)*)'|\"([^\"\\\\]*(?:\\\\.[^\"\\\\]*)*)\"|([^,]+)/", $block, $v);
                     $values = [];
-                    foreach ($v[0] as $i => $val) {
+                    foreach ($v[0] as $val) {
                         $val = trim($val, " \t\n\r\0\x0B,'\"");
                         $values[] = stripslashes($val);
                     }
@@ -204,15 +239,22 @@ try {
         $headers = $dataRows ? array_keys($dataRows[0]) : [];
     } elseif ($ext === 'json') {
         $data = json_decode($content, true);
-        if (json_last_error() !== JSON_ERROR_NONE) throw new Exception("JSON نامعتبر");
+        if (json_last_error() !== JSON_ERROR_NONE) throw new Exception("ساختار JSON نامعتبر است");
         $dataRows = is_array($data) && isset($data[0]) ? $data : [$data];
         $headers = $dataRows ? array_keys($dataRows[0]) : [];
+    } else {
+        echo json_encode(["ok" => false, "error" => "فرمت پشتیبانی نمی‌شود. از CSV، Excel، TXT، JSON یا SQL استفاده کنید."]);
+        exit();
     }
 
     // پیش‌نمایش برای فرمت‌های ساختاریافته
-    if ($preview && !empty($headers)) {
+    if ($preview) {
+        if (empty($headers)) {
+            echo json_encode(["ok" => false, "error" => "ستونی در فایل یافت نشد. ساختار فایل را بررسی کنید."]);
+            exit();
+        }
         $sample = array_slice($dataRows, 0, 5);
-        $sample = array_map('array_values', $sample);
+        $sample = array_map(function ($r) { return array_values((array)$r); }, $sample);
         echo json_encode([
             "ok" => true,
             "preview" => true,
@@ -231,7 +273,7 @@ try {
         // نام
         $name_parts = [];
         foreach ($name_columns as $idx) {
-            if (isset($values[$idx])) $name_parts[] = trim($values[$idx]);
+            if (isset($values[$idx])) $name_parts[] = trim((string)$values[$idx]);
         }
         $name = $ignore_name ? 'بینام' : (implode(' ', array_filter($name_parts)) ?: 'بینام');
 
@@ -253,7 +295,7 @@ try {
         $leads[] = ['name' => $name, 'phone' => $phone];
     }
 
-    // گزارش مقایسهٔ بین‌کمپینی: شماره‌هایی که (با نرمال‌سازی صفر/۹۸) در پروژه‌های دیگر سابقه دارند
+    // گزارش مقایسهٔ بین‌کمپینی
     $cross_campaign = cross_campaign_report($db, $project_id, $leads);
 
     if (!$preview && !empty($leads)) {
@@ -268,13 +310,13 @@ try {
         "cross_campaign_count" => count($cross_campaign),
         "cross_campaign" => array_slice($cross_campaign, 0, 100)
     ]);
-} catch (Exception $e) {
-    echo json_encode(["ok" => false, "error" => $e->getMessage()]);
+} catch (Throwable $e) {
+    echo json_encode(["ok" => false, "error" => "خطا در پردازش فایل: " . $e->getMessage()]);
 }
 
 function detect_delimiter($sample)
 {
-    $delims = [':', ',', ';', '|'];
+    $delims = [',', ';', "\t", ':', '|'];
     $max = 0;
     $best = ',';
     foreach ($delims as $d) {
@@ -289,14 +331,11 @@ function detect_delimiter($sample)
 
 /**
  * یافتن شماره‌هایی از این دستهٔ ورودی که در «کمپین/پروژه‌های دیگر» سابقه دارند.
- * مقایسه بر اساس شمارهٔ نرمال‌شده (۰۹۱۲... و ۹۱۲... یکسان) انجام می‌شود و آخرین
- * کارشناسی که شماره دستش بوده گزارش می‌شود.
  */
 function cross_campaign_report($db, $project_id, $leads)
 {
     if (empty($leads)) return [];
 
-    // نگاشت نرمال‌شده -> شمارهٔ نمایش
     $norm_map = [];
     foreach ($leads as $l) {
         $n = Phone::normalize($l['phone']);
@@ -304,28 +343,31 @@ function cross_campaign_report($db, $project_id, $leads)
     }
     if (empty($norm_map)) return [];
 
-    $norms = array_keys($norm_map);
-    $norms = array_slice($norms, 0, 500); // محدودسازی برای ایمپورت‌های بزرگ
+    $norms = array_slice(array_keys($norm_map), 0, 500);
     $place = implode(',', array_fill(0, count($norms), '?'));
 
     $params = $norms;
     $params[] = $project_id;
-    $rows = $db->fetchAll(
-        "SELECT l.phone_norm, l.phone, l.project_id, p.name AS project_name,
-                l.assigned_to, u.name AS assignee_name, l.created_at
-         FROM leads l
-         LEFT JOIN projects p ON l.project_id = p.id
-         LEFT JOIN users u ON l.assigned_to = u.id
-         WHERE l.phone_norm IN ($place) AND l.project_id != ?
-         ORDER BY l.created_at DESC",
-        $params
-    );
+    try {
+        $rows = $db->fetchAll(
+            "SELECT l.phone_norm, l.phone, l.project_id, p.name AS project_name,
+                    l.assigned_to, u.name AS assignee_name, l.created_at
+             FROM leads l
+             LEFT JOIN projects p ON l.project_id = p.id
+             LEFT JOIN users u ON l.assigned_to = u.id
+             WHERE l.phone_norm IN ($place) AND l.project_id != ?
+             ORDER BY l.created_at DESC",
+            $params
+        );
+    } catch (Throwable $e) {
+        return [];
+    }
 
     $report = [];
     $leads_func = new Leads($db);
     foreach ($rows as $r) {
         $key = $r['phone_norm'];
-        if (isset($report[$key])) continue; // فقط جدیدترین سابقه برای هر شماره
+        if (isset($report[$key])) continue;
         $last = $leads_func->get_last_handler($r['phone']);
         $report[$key] = [
             'phone'        => $norm_map[$key] ?? $r['phone'],

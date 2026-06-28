@@ -193,6 +193,27 @@ try {
     error_log('sale process error: ' . $e->getMessage());
 }
 
+// الصاق اطلاعات فروش ثبت‌شده (نوع پرداخت: کامل/قسطی) به هر تراکنش
+$sale_map = [];
+$refs = array_column($transactions, 'id');
+if (!empty($refs)) {
+    $place = implode(',', array_fill(0, count($refs), '?'));
+    $sale_rows = $db->fetchAll("SELECT id, transaction_ref, payment_type FROM sales WHERE transaction_ref IN ($place)", $refs);
+    foreach ($sale_rows as $sr) {
+        $sale_map[$sr['transaction_ref']] = $sr;
+    }
+}
+foreach ($transactions as &$t) {
+    if (isset($sale_map[$t['id']])) {
+        $t['is_sale'] = true;
+        $t['sale_id'] = (int)$sale_map[$t['id']]['id'];
+        $t['payment_type'] = $sale_map[$t['id']]['payment_type'];
+    } else {
+        $t['is_sale'] = false;
+    }
+}
+unset($t);
+
 echo json_encode([
     'success' => true,
     'new_sales' => $newSalesCount,

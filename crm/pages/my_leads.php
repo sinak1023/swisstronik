@@ -1742,6 +1742,19 @@ $statuses = [
         });
     }
 
+    function setPaymentType(saleId, type) {
+        $.post('apis/set_sale_payment_type.php', {
+            sale_id: saleId,
+            payment_type: type
+        }, function(res) {
+            if (res.ok) {
+                showSnackbar(type === 'installment' ? 'به‌عنوان فروش قسطی ثبت شد' : 'به‌عنوان فروش کامل ثبت شد');
+            } else {
+                showSnackbar(res.error || 'خطا در ثبت نوع پرداخت', 'error');
+            }
+        }).fail(() => showSnackbar('خطا در ارتباط با سرور', 'error'));
+    }
+
     // متغیر برای ذخیره تعداد تراکنش‌های جدید
     let newTransactionsCount = 0;
 
@@ -1769,6 +1782,25 @@ $statuses = [
             if (res.success && res.transactions && res.transactions.length > 0) {
                 let html = '';
                 res.transactions.forEach(t => {
+                    let saleBox = '';
+                    if (t.is_sale) {
+                        const fullChecked = t.payment_type === 'full' ? 'checked' : '';
+                        const instChecked = t.payment_type === 'installment' ? 'checked' : '';
+                        saleBox = `
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <p class="text-xs text-gray-500 mb-2">این تراکنش به‌عنوان فروش شما ثبت شده — نوع پرداخت:</p>
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                                    <input type="radio" name="ptype_${t.sale_id}" value="full" ${fullChecked} onchange="setPaymentType(${t.sale_id}, 'full')">
+                                    فروش کامل
+                                </label>
+                                <label class="flex items-center gap-1.5 cursor-pointer text-sm">
+                                    <input type="radio" name="ptype_${t.sale_id}" value="installment" ${instChecked} onchange="setPaymentType(${t.sale_id}, 'installment')">
+                                    قسطی
+                                </label>
+                            </div>
+                        </div>`;
+                    }
                     html += `
                 <div class="bg-white border border-border rounded-xl p-5 shadow-sm hover:shadow transition-all">
                     <div class="flex justify-between items-start">
@@ -1782,8 +1814,10 @@ $statuses = [
                         </div>
                         <div class="text-left">
                             <span class="text-xs bg-green-100 text-green-800 px-3 py-1 rounded-full">پرداخت موفق</span>
+                            ${t.is_sale ? '<span class="block mt-1 text-xs bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">فروش شما</span>' : ''}
                         </div>
                     </div>
+                    ${saleBox}
                 </div>`;
                 });
 

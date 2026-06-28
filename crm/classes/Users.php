@@ -13,7 +13,7 @@ class Users
     public function add($data)
     {
         $sql = "INSERT INTO {$this->table} (`name`, `email`, `phone`, `password`, `created_at`, `updated_at`, `role_id`, `permissions`, `telegram_chat_id`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
-        $params = [$data['name'], $data['email'], $data['phone'], $data['password'],  date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $data['role_id'], $data['permissions'], $data['telegram_chat_id'] ?? null];
+        $params = [$data['name'] ?? '', $data['email'] ?? null, $data['phone'] ?? null, $data['password'] ?? null,  date('Y-m-d H:i:s'), date('Y-m-d H:i:s'), $data['role_id'] ?? null, $data['permissions'] ?? null, $data['telegram_chat_id'] ?? null];
         $this->db->execute($sql, $params);
         return $this->db->lastInsertId();
     }
@@ -111,7 +111,7 @@ class Users
     {
         $sql = "SELECT id FROM {$this->table} WHERE (`phone` = ?)";
         $user = $this->db->fetch($sql, [$phone]);
-        if ($user['id']) {
+        if ($user && !empty($user['id'])) {
             return false;
         }
         return true;
@@ -121,7 +121,7 @@ class Users
     {
         $sql = "SELECT id FROM {$this->table} WHERE (`email` = ?)";
         $user = $this->db->fetch($sql, [$email]);
-        if ($user['id']) {
+        if ($user && !empty($user['id'])) {
             return false;
         }
         return true;

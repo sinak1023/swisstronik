@@ -47,6 +47,12 @@ if (!$lead) {
 }
 
 
+// آزادسازی قفل نشست قبل از درخواست کند به زرین‌پال
+// تا درخواست‌های همزمانِ همین کاربر (ذخیرهٔ وضعیت، یادداشت، لود صفحه) معطل نمانند.
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 // تنظیمات زرین‌پال
 $url = 'https://next.zarinpal.com/api/v4/graphql';
 $access_token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiMmUwMWJhMTEzYWFkNjNlNmM2ZmFjNWEyMDUwNTRkMDE4MTU0MjUxMzk1MjRkZjdjNTg4ODBiODRkZjA4MmQyYzRhMTU1NDhiNzdmYzZjM2MiLCJpYXQiOjE3NTc4NDE1MjQuNjkwODU3LCJuYmYiOjE3NTc4NDE1MjQuNjkwODY3LCJleHAiOjE5MTU2MDc5MjQuNjMxMDU4LCJzdWIiOiIxNTE5OTQzIiwic2NvcGVzIjpbXX0.YpI6IHx16xa7vonbFInTEK-cfBRAJCPgUQCFpDe9_OpedkAfK3_tkteJ3PdZcT5RZJL457hut6MuCsTy-3Kluk-Uy8JeKW7X-pVD5MFgVOTmSeZ2Ji5fDwreyHqbXaTspKSyclT-pgks-zetH7XttvoB1McenoGYqQ10FhiVZ0CQQrkQbgPNhKlw5XrAX6hX6kGbGEwwmmhjq49Mkr1D-z4axVX96iXqaT--vpC0oqTzYPSUNwB9ac4z5xEMIhZ-quQfV_nyBHKYn7B4jRs3aykRs1szXVLDYayN4TipFaNe2q2sk2gbPIuhFQzFGpAo9SK7rpYZnKHJQ1kn_uEzijinNxHaCfwjAZHLhUH5NxxXUNMeVEHFI5OgtEDPWf2wogGYs7nWySnzgIjowXAy5q3eW-5OaCgUfcRSBzZ0-a83XtfP8rEZuYIUVUOYxCAjqhHOaFFu6I-wGVdgIfYN_XqJB-ZhrVPUDGfa9f03MJTqJqzrJ4JoKCu3jCREZ29lnkXpMClxSQUKzXXimZcRjnDyH_BIhDuDKim3XKkgUepCNcCan-hXQ2N6l5oUO2DzhnQriK4Os5PrK-qDQXOwGtcEaJGvoj2D6FA2xt4yPqQ3UtC8vSJY8u_pR6OzXw2BNlZRHiu1feoF6IDsf5oNW2BygiykZGa_rOTbDrOo5qM';
@@ -140,6 +146,8 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate, br');
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 8);
+curl_setopt($ch, CURLOPT_TIMEOUT, 15);
 
 // ارسال درخواست
 $response = curl_exec($ch);

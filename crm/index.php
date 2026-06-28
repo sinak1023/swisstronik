@@ -13,6 +13,8 @@ include("header.php");
 if ($ex[0] !== "login" && $ex[0] !== "forgot_password") {
     if (!isset($_SESSION["id"])) {
         echo '<script> location.replace("login"); </script>';
+        include("footer.php");
+        exit();
     }
 }
 if ($ex[0] == '/') {

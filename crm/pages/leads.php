@@ -956,7 +956,7 @@ $statuses = [
 </style>
 
 <?php
-$extra_footer .= '
+$extra_footer = ($extra_footer ?? '') . '
 <script>
     $(".select2").select2();
 </script>

@@ -67,6 +67,11 @@ if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
     exit();
 }
 
+// آزادسازی قفل نشست قبل از پردازش (احتمالاً کند) فایل
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 $file = $_FILES['file'];
 $filename = $file['name'];
 $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
@@ -110,21 +115,9 @@ try {
             $dataRows = array_slice($all, 1);
         }
     } elseif ($ext === 'xls') {
-        // فرمت قدیمی باینری xls فقط با PhpSpreadsheet خوانده می‌شود
-        if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
-            echo json_encode(["ok" => false, "error" => "فرمت قدیمی xls روی این سرور پشتیبانی نمی‌شود. لطفاً فایل را به‌صورت xlsx یا CSV ذخیره و آپلود کنید."]);
-            exit();
-        }
-        require_once __DIR__ . '/../vendor/autoload.php';
-        if (!class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
-            echo json_encode(["ok" => false, "error" => "خواندن xls ممکن نشد. لطفاً فایل را به‌صورت xlsx یا CSV آپلود کنید."]);
-            exit();
-        }
-        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmp_path);
-        $sheet = $spreadsheet->getActiveSheet();
-        $rows = $sheet->toArray(null, true, true, true);
-        $headers = array_values(array_map(function ($v) { return trim((string)$v); }, $rows[1] ?? []));
-        $dataRows = array_slice($rows, 2);
+        // فرمت قدیمی باینری xls پشتیبانی نمی‌شود (برای جلوگیری از وابستگی به PhpSpreadsheet)
+        echo json_encode(["ok" => false, "error" => "فرمت قدیمی xls پشتیبانی نمی‌شود. لطفاً در اکسل با گزینهٔ «Save As» فایل را به‌صورت xlsx یا CSV ذخیره و آپلود کنید."]);
+        exit();
     } elseif ($ext === 'csv') {
         // CSV به‌صورت بومی (بدون نیاز به PhpSpreadsheet)
         $csv_delim = $delimiter ?: detect_delimiter(substr($content, 0, 2000));

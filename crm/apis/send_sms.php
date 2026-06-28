@@ -34,6 +34,11 @@ if (empty($phone) || empty($message)) {
     exit;
 }
 
+// آزادسازی قفل نشست قبل از ارسال کند پیامک تا درخواست‌های همزمان معطل نشوند
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
 $sms = new Sms($db);
 $result = $sms->send($phone, $message);
 

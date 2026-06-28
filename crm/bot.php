@@ -2,7 +2,8 @@
 // bot.php - Telegram Bot
 require_once 'config.php';
 
-$botToken = $config['bot_token']; // توکن ربات خود را اینجا قرار دهید
+// توکن از تنظیمات قابل‌ویرایش پنل خوانده می‌شود (و در صورت نبود، از config.php)
+$botToken = (new Settings($db))->get('bot_token', $config['bot_token'] ?? '');
 $apiURL = "https://api.telegram.org/bot{$botToken}";
 
 

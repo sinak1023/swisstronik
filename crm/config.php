@@ -58,6 +58,12 @@ $config = [
     ]
 ];
 
+// در صورت وجود فایل اطلاعات نصب (که توسط install.php ساخته می‌شود)،
+// اطلاعات دیتابیس و توکن بات از آن خوانده و جایگزین مقادیر پیش‌فرض می‌شوند.
+if (file_exists(__DIR__ . '/db_config.php')) {
+    require __DIR__ . '/db_config.php';
+}
+
 spl_autoload_register(function ($namespace) {
     $namespace = str_replace("\\", '/', $namespace);
     require_once 'classes/' . $namespace . '.php';

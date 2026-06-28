@@ -5,3 +5,5 @@ states/*
 Invoices/*.pdf
 cronjobs/*.lock
 cronjobs/error_log
+db_config.php
+install.lock

@@ -18,15 +18,17 @@ if (empty($phone) || empty($message)) {
     exit;
 }
 
+// پیام‌رسان بله لینک «گفت‌وگو با شماره» عمومی مانند واتساپ ندارد؛
+// بنابراین متن آماده برمی‌گردد تا در سمت کلاینت کپی شود و وب بله باز شود.
 $clean_phone = Phone::intlFormat($phone);
-
-$encoded_message = urlencode($message);
-$telegram_url = "https://t.me/+$clean_phone?text=$encoded_message";
+$bale_url = "https://web.bale.ai/";
 
 // ثبت در لاگ پیام‌ها برای گزارش‌گیری
-(new ActivityLog($db))->logMessage($_SESSION['id'], $lead_id, $phone, 'telegram', $message, 'sent');
+(new ActivityLog($db))->logMessage($_SESSION['id'], $lead_id, $phone, 'bale', $message, 'sent');
 
 echo json_encode([
     'ok' => true,
-    'redirect_url' => $telegram_url
+    'redirect_url' => $bale_url,
+    'copy_text' => $message,
+    'phone' => $clean_phone
 ]);

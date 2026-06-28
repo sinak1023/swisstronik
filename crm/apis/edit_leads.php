@@ -32,6 +32,14 @@ $name = trim($_POST['name'] ?? '');
 $status = $_POST['status'] ?? 'new';
 $notes = trim($_POST['notes'] ?? '');
 
+// روش‌های تماس (اختیاری) — در صورت خالی بودن، شمارهٔ اصلی لید مبناست
+$whatsapp_phone = trim($_POST['whatsapp_phone'] ?? '');
+$telegram_phone = trim($_POST['telegram_phone'] ?? '');
+$telegram_id    = trim($_POST['telegram_id'] ?? '');
+$bale_phone     = trim($_POST['bale_phone'] ?? '');
+
+$called = !empty($_POST['called']) ? 1 : 0;
+
 if (!$id || !$name) {
     echo json_encode(["ok" => false, "error" => "داده نامعتبر"]);
     exit();
@@ -43,11 +51,28 @@ if (!$lead || $lead['assigned_to'] != $_SESSION["id"]) {
     exit();
 }
 
-$result = $leads_func->update($id, [
+$update = [
     'name' => $name,
     'status' => $status,
-    'notes' => $notes
-]);
+    'notes' => $notes,
+    'whatsapp_phone' => $whatsapp_phone ?: null,
+    'telegram_phone' => $telegram_phone ?: null,
+    'telegram_id'    => $telegram_id ?: null,
+    'bale_phone'     => $bale_phone ?: null,
+];
+
+if ($called) {
+    $update['called'] = 1;
+    $update['called_at'] = date('Y-m-d H:i:s');
+}
+
+$leads_func->update($id, $update);
+
+// ثبت لاگ تماس بر اساس چک‌باکس «تماس گرفتم» — وضعیت انتخابی به‌عنوان نتیجهٔ تماس
+if ($called) {
+    (new ActivityLog($db))->logCall($_SESSION['id'], $id, $lead['phone'], 'normal', $status);
+}
+
+(new ActivityLog($db))->log($_SESSION['id'], 'edit_lead', 'lead', $id, ['status' => $status, 'called' => $called]);
 
 echo json_encode(["ok" => true]);
-?>

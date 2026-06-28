@@ -14,13 +14,14 @@ class Leads
  
     public function add($data)
     {
-        $sql = "INSERT INTO {$this->table} 
-                (`project_id`, `name`, `phone`, `notes`, `assigned_to`, `status`, `created_at`, `updated_at`) 
-                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+        $sql = "INSERT INTO {$this->table}
+                (`project_id`, `name`, `phone`, `phone_norm`, `notes`, `assigned_to`, `status`, `created_at`, `updated_at`)
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
         $params = [
             $data['project_id'],
             $data['name'] ?? 'بینام',
             $data['phone'],
+            Phone::normalize($data['phone']),
             $data['notes'] ?? null,
             $data['assigned_to'] ?? null,
             $data['status'] ?? 'new'
@@ -101,6 +102,13 @@ class Leads
             $sql .= " AND l.created_at <= ?";
             $params[] = $filters['to_date'] . ' 23:59:59';
         }
+        if (!empty($filters['assigned_status'])) {
+            if ($filters['assigned_status'] === 'assigned') {
+                $sql .= " AND l.assigned_to IS NOT NULL";
+            } elseif ($filters['assigned_status'] === 'unassigned') {
+                $sql .= " AND l.assigned_to IS NULL";
+            }
+        }
 
         $sql .= " ORDER BY l.id DESC LIMIT ? OFFSET ?";
         $params[] = $limit;
@@ -145,6 +153,13 @@ class Leads
             $sql .= " AND l.created_at <= ?";
             $params[] = $filters['to_date'] . ' 23:59:59';
         }
+        if (!empty($filters['assigned_status'])) {
+            if ($filters['assigned_status'] === 'assigned') {
+                $sql .= " AND l.assigned_to IS NOT NULL";
+            } elseif ($filters['assigned_status'] === 'unassigned') {
+                $sql .= " AND l.assigned_to IS NULL";
+            }
+        }
 
         $result = $this->db->fetch($sql, $params);
         return $result['total'] ?? 0;
@@ -178,8 +193,8 @@ class Leads
 
                 
                 $this->db->execute(
-                    "INSERT INTO lead_numbers (lead_id, phone, assigned_to , assigned_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                    [$lead_id, $lead['phone'], $user_id, date("Y-m-d H:i:s"), date("Y-m-d H:i:s")]
+                    "INSERT INTO lead_numbers (lead_id, phone, phone_norm, assigned_to , assigned_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    [$lead_id, $lead['phone'], Phone::normalize($lead['phone']), $user_id, date("Y-m-d H:i:s"), date("Y-m-d H:i:s")]
                 );
             }
 
@@ -206,8 +221,8 @@ class Leads
 
             
             $this->db->execute(
-                "INSERT INTO lead_numbers (lead_id, phone, assigned_to , assigned_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                [$lead_id, $lead['phone'], null, date("Y-m-d H:i:s"), date("Y-m-d H:i:s")]
+                "INSERT INTO lead_numbers (lead_id, phone, phone_norm, assigned_to , assigned_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                [$lead_id, $lead['phone'], Phone::normalize($lead['phone']), null, date("Y-m-d H:i:s"), date("Y-m-d H:i:s")]
             );
 
             return true;
@@ -228,14 +243,55 @@ class Leads
         }
     }
 
+    /**
+     * تاریخچه تخصیص بر اساس شماره نرمال‌شده — تا شماره‌ای که در یک کمپین با صفر و
+     * در کمپین دیگر بدون صفر ثبت شده، یکسان تشخیص داده شود.
+     */
     public function get_assignment_history($phone)
     {
-        $sql = "SELECT ln.*, u.name as user_name 
-            FROM lead_numbers ln 
-            JOIN users u ON ln.assigned_to = u.id 
-            WHERE ln.phone = ? 
+        $norm = Phone::normalize($phone);
+        $sql = "SELECT ln.*, u.name as user_name
+            FROM lead_numbers ln
+            JOIN users u ON ln.assigned_to = u.id
+            WHERE ln.phone_norm = ? OR ln.phone = ?
             ORDER BY ln.assigned_at DESC";
-        return $this->db->fetchAll($sql, [$phone]);
+        return $this->db->fetchAll($sql, [$norm, $phone]);
+    }
+
+    /**
+     * یافتن سابقهٔ این شماره در پروژه‌ها/کمپین‌های دیگر (با مقایسهٔ نرمال‌شده).
+     * شامل نام پروژه، آخرین کارشناسی که شماره دستش بوده و تاریخ‌ها.
+     */
+    public function get_cross_campaign_matches($phone, $exclude_project_id = null)
+    {
+        $norm = Phone::normalize($phone);
+        if ($norm === '') return [];
+        $sql = "SELECT l.id, l.phone, l.project_id, l.assigned_to, l.status, l.created_at,
+                       p.name as project_name, u.name as assignee_name
+                FROM {$this->table} l
+                LEFT JOIN projects p ON l.project_id = p.id
+                LEFT JOIN users u ON l.assigned_to = u.id
+                WHERE l.phone_norm = ?";
+        $params = [$norm];
+        if ($exclude_project_id !== null) {
+            $sql .= " AND l.project_id != ?";
+            $params[] = $exclude_project_id;
+        }
+        $sql .= " ORDER BY l.created_at DESC";
+        return $this->db->fetchAll($sql, $params);
+    }
+
+    /** آخرین کارشناسی که این شماره (نرمال‌شده) دستش بوده */
+    public function get_last_handler($phone)
+    {
+        $norm = Phone::normalize($phone);
+        if ($norm === '') return null;
+        $sql = "SELECT ln.*, u.name as user_name
+                FROM lead_numbers ln
+                JOIN users u ON ln.assigned_to = u.id
+                WHERE ln.phone_norm = ? AND ln.assigned_to IS NOT NULL
+                ORDER BY ln.assigned_at DESC LIMIT 1";
+        return $this->db->fetch($sql, [$norm]);
     }
 
 
@@ -243,8 +299,8 @@ class Leads
     {
         $inserted = 0;
         $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (project_id, name, phone, created_at, updated_at) 
-            VALUES (?, ?, ?, NOW(), NOW()) 
+            INSERT INTO {$this->table} (project_id, name, phone, phone_norm, created_at, updated_at)
+            VALUES (?, ?, ?, ?, NOW(), NOW())
             ON DUPLICATE KEY UPDATE name = VALUES(name), updated_at = NOW()
         ");
 
@@ -253,17 +309,19 @@ class Leads
             $phone = trim($lead['phone']);
             if (!$phone || strlen($phone) < 10 || strlen($phone) > 15) continue;
 
-            $stmt->execute([$project_id, $name, $phone]);
+            $stmt->execute([$project_id, $name, $phone, Phone::normalize($phone)]);
             if ($stmt->rowCount()) $inserted++;
         }
         return $inserted;
     }
 
- 
+
     public function phone_exists_in_project($project_id, $phone, $excludeId = null)
     {
-        $sql = "SELECT id FROM {$this->table} WHERE project_id = ? AND phone = ?";
-        $params = [$project_id, $phone];
+        // مقایسه بر اساس شماره نرمال‌شده تا 0912... و 912... یکسان شمرده شوند
+        $norm = Phone::normalize($phone);
+        $sql = "SELECT id FROM {$this->table} WHERE project_id = ? AND (phone_norm = ? OR phone = ?)";
+        $params = [$project_id, $norm, $phone];
         if ($excludeId !== null) {
             $sql .= " AND id != ?";
             $params[] = $excludeId;

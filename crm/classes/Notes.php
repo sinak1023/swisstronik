@@ -12,7 +12,7 @@ class Notes
 
     public function add($data)
     {
-        $sql = "INSERT INTO {$this->table} (lead_id, phone, user_id, note) VALUES (?, ?, ?, ?)";
+        $sql = "INSERT INTO {$this->table} (lead_id, phone, user_id, note, created_at) VALUES (?, ?, ?, ?, NOW())";
         $params = [$data['lead_id'],$data['phone'], $data['user_id'], $data['note']];
         $this->db->execute($sql, $params);
         return $this->db->lastInsertId();
@@ -55,13 +55,13 @@ class Notes
     }
     public function get_by_phone($phone)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE phone = ? ";
+        $sql = "SELECT * FROM {$this->table} WHERE phone = ? ORDER BY created_at DESC, id DESC";
         return $this->db->fetchAll($sql, [$phone]);
     }
     public function get_by_lead_user($lead_id, $user_id)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE lead_id = ? and user_id = ? ";
-        return $this->db->fetchAll($sql, [$$lead_id, $user_id]);
+        $sql = "SELECT * FROM {$this->table} WHERE lead_id = ? and user_id = ? ORDER BY created_at DESC, id DESC";
+        return $this->db->fetchAll($sql, [$lead_id, $user_id]);
     }
 
     public function get_all()

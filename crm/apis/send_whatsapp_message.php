@@ -11,22 +11,22 @@ if (!isset($_SESSION["id"])) {
 require_once '../config.php';
 $phone = trim($_POST['phone'] ?? '');
 $message = trim($_POST['message'] ?? '');
+$lead_id = (int)($_POST['lead_id'] ?? 0) ?: null;
 
 if (empty($phone) || empty($message)) {
     echo json_encode(['ok' => false, 'error' => 'شماره یا متن خالی است']);
     exit;
 }
 
-$clean_phone = preg_replace('/\D/', '', $phone);
-if (substr($clean_phone, 0, 1) === '0') {
-    $clean_phone = '98' . substr($clean_phone, 1);
-}
+$clean_phone = Phone::intlFormat($phone);
 
 $encoded_message = urlencode($message);
 $whatsapp_url = "https://wa.me/$clean_phone?text=$encoded_message";
+
+// ثبت در لاگ پیام‌ها برای گزارش‌گیری
+(new ActivityLog($db))->logMessage($_SESSION['id'], $lead_id, $phone, 'whatsapp', $message, 'sent');
 
 echo json_encode([
     'ok' => true,
     'redirect_url' => $whatsapp_url
 ]);
-?>

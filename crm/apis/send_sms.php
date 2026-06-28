@@ -27,53 +27,29 @@ if (!in_array($root, $permissions)) {
 
 $phone = trim($_POST['phone'] ?? '');
 $message = trim($_POST['message'] ?? '');
+$lead_id = (int)($_POST['lead_id'] ?? 0) ?: null;
 
 if (empty($phone) || empty($message)) {
     echo json_encode(['ok' => false, 'error' => 'شماره یا متن پیام خالی است']);
     exit;
 }
 
-$ip_panel_username = $config['ippanel']['username'];
-$ip_panel_password = $config['ippanel']['password'];
-$ip_panel_number   = $config['ippanel']['number'];
+$sms = new Sms($db);
+$result = $sms->send($phone, $message);
 
-if (substr($phone, 0, 1) !== '0') {
-    $phone = '0' . ltrim($phone, '+98');
-}
+// ثبت در لاگ پیام‌ها برای گزارش‌گیری
+$activity = new ActivityLog($db);
+$activity->logMessage(
+    $_SESSION['id'],
+    $lead_id,
+    Phone::localFormat($phone),
+    'sms',
+    $message,
+    $result['status'] === 'success' ? 'sent' : 'failed'
+);
 
-$url = "https://ippanel.com/services.jspd";
-
-$param = [
-    "uname"     => $ip_panel_username,
-    "pass"      => $ip_panel_password,
-    "from"      => $ip_panel_number,
-    "message"   => $message,
-    "to"        => json_encode([$phone]),
-    "op"        => "send"
-];
-
-$handler = curl_init($url);
-curl_setopt($handler, CURLOPT_CUSTOMREQUEST, "POST");
-curl_setopt($handler, CURLOPT_POSTFIELDS, $param);
-curl_setopt($handler, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($handler, CURLOPT_TIMEOUT, 30);
-curl_setopt($handler, CURLOPT_SSL_VERIFYPEER, false);
-$response = curl_exec($handler);
-
-if (curl_errno($handler)) {
-    echo json_encode(['ok' => false, 'error' => 'خطا در اتصال به سرور پیامک']);
-    curl_close($handler);
-    exit;
-}
-
-curl_close($handler);
-
-$parts = explode(',', $response);
-$status_code = $parts[0] ?? '';
-
-if ($status_code === '0') {
+if ($result['status'] === 'success') {
     echo json_encode(['ok' => true]);
 } else {
-    $error_msg = $parts[1] ?? 'خطای ناشناخته در ارسال پیامک';
-    echo json_encode(['ok' => false, 'error' => 'خطا در ارسال: ' . $error_msg]);
+    echo json_encode(['ok' => false, 'error' => 'خطا در ارسال: ' . ($result['error'] ?? 'نامشخص')]);
 }

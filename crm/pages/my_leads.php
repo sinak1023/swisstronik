@@ -50,6 +50,19 @@ $statuses = [
                     <?php endforeach; ?>
                 </select>
             </div>
+            <div>
+                <label class="block text-sm mb-2 text-text">از تاریخ (شمسی)</label>
+                <input id="search_from_date" type="text" data-jdp readonly class="w-full px-4 py-2 border rounded-lg bg-background text-text cursor-pointer" placeholder="۱۴۰۳/۰۱/۰۱">
+            </div>
+            <div>
+                <label class="block text-sm mb-2 text-text">تا تاریخ (شمسی)</label>
+                <input id="search_to_date" type="text" data-jdp readonly class="w-full px-4 py-2 border rounded-lg bg-background text-text cursor-pointer" placeholder="۱۴۰۳/۱۲/۲۹">
+            </div>
+            <div class="flex items-end">
+                <button type="button" onclick="clearDateFilters()" class="text-sm text-gray-500 hover:text-red-500 px-2 py-2">
+                    <i class='bx bx-x-circle'></i> پاک کردن تاریخ
+                </button>
+            </div>
         </div>
         <div class="flex justify-end mt-4">
             <button id="searchBtn" class="bg-primary hover:bg-primary-dark text-white px-5 py-2.5 rounded-lg flex items-center gap-2">
@@ -136,8 +149,40 @@ $statuses = [
                                 <input type="text" id="modal_name" class="w-full px-4 py-3 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary" required>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-text mb-2">وضعیت</label>
+
+                        <!-- روش‌های تماس (اختیاری) — پیش‌فرض همان شمارهٔ اصلی است -->
+                        <div class="border border-border rounded-xl p-4 bg-muted/30">
+                            <h4 class="text-sm font-semibold text-text mb-3 flex items-center gap-2">
+                                <i class='bx bx-id-card text-primary'></i> روش‌های تماس (اختیاری)
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">شماره واتساپ</label>
+                                    <input type="text" id="modal_whatsapp_phone" class="w-full px-3 py-2 border border-border rounded-lg bg-background dir-ltr text-sm" placeholder="پیش‌فرض: شماره اصلی">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">شماره تلگرام</label>
+                                    <input type="text" id="modal_telegram_phone" class="w-full px-3 py-2 border border-border rounded-lg bg-background dir-ltr text-sm" placeholder="پیش‌فرض: شماره اصلی">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">آیدی تلگرام</label>
+                                    <input type="text" id="modal_telegram_id" class="w-full px-3 py-2 border border-border rounded-lg bg-background dir-ltr text-sm" placeholder="@username">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">شماره بله</label>
+                                    <input type="text" id="modal_bale_phone" class="w-full px-3 py-2 border border-border rounded-lg bg-background dir-ltr text-sm" placeholder="پیش‌فرض: شماره اصلی">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- چک‌باکس «تماس گرفتم» — با انتخاب آن، باکس وضعیت نمایش داده می‌شود -->
+                        <div class="flex items-center gap-2 bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+                            <input type="checkbox" id="modal_called" onchange="toggleStatusBox()" class="w-5 h-5 text-primary rounded focus:ring-primary">
+                            <label for="modal_called" class="text-sm font-medium text-text cursor-pointer">تماس گرفتم</label>
+                        </div>
+
+                        <div id="statusBoxWrap" class="hidden">
+                            <label class="block text-sm font-medium text-text mb-2">وضعیت تماس</label>
                             <select id="modal_status" class="w-full px-4 py-3 border border-border rounded-lg bg-background focus:ring-2 focus:ring-primary focus:border-primary">
                                 <?php foreach ($statuses as $k => $v): ?>
                                     <option value="<?= $k ?>"><?= $v ?></option>
@@ -183,7 +228,7 @@ $statuses = [
                 </div>
 
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <button onclick="sendViaTelegram()" class="bg-white border border-border rounded-xl p-6 text-center hover:shadow-lg transition-all hover:border-blue-300 group">
                         <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-blue-200 transition-colors">
                             <i class='bx bxl-telegram text-2xl text-primary'></i>
@@ -198,6 +243,14 @@ $statuses = [
                         </div>
                         <h4 class="font-semibold mb-1">ارسال در واتساپ</h4>
                         <p class="text-sm text-gray-600">ارسال خودکار پیام</p>
+                    </button>
+
+                    <button onclick="sendViaBale()" class="bg-white border border-border rounded-xl p-6 text-center hover:shadow-lg transition-all hover:border-cyan-300 group">
+                        <div class="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center mx-auto mb-3 group-hover:bg-cyan-200 transition-colors">
+                            <i class='bx bx-paper-plane text-2xl text-cyan-600'></i>
+                        </div>
+                        <h4 class="font-semibold mb-1">ارسال در بله</h4>
+                        <p class="text-sm text-gray-600">کپی متن و باز کردن بله</p>
                     </button>
 
                     <button onclick="sendViaSMS()" class="bg-white border border-border rounded-xl p-6 text-center hover:shadow-lg transition-all hover:border-purple-300 group">
@@ -637,11 +690,23 @@ $statuses = [
             name: $('#search_name').val().trim(),
             phone: $('#search_phone').val().trim(),
             status: $('#search_status').val(),
+            from_date: toEnglishDigits($('#search_from_date').val().trim()),
+            to_date: toEnglishDigits($('#search_to_date').val().trim()),
             project_id: <?= $project_id ?>,
             my_leads: 1
         };
         loadPage(1, filters);
     });
+
+    function clearDateFilters() {
+        $('#search_from_date').val('');
+        $('#search_to_date').val('');
+    }
+
+    // فعال‌سازی تقویم شمسی روی فیلترهای تاریخ
+    if (window.jalaliDatepicker) {
+        jalaliDatepicker.startWatch({ time: false, persianDigits: true });
+    }
 
 
     $('#search_name, #search_phone').on('keypress', e => {
@@ -775,12 +840,24 @@ $statuses = [
     function openLeadModal(lead) {
         currentLeadData = lead;
 
+        window.currentLead = lead;
+
         $('#modal_lead_id').val(lead.id);
         $('#modal_name').val(lead.name);
         $('#modal_phone').val(lead.phone);
         $('#modal_status').val(lead.status);
         $('#note_lead_id').val(lead.id);
         $('#reminder_lead_id').val(lead.id);
+
+        // روش‌های تماس — اگر خالی باشند، شمارهٔ اصلی پیش‌فرض است
+        $('#modal_whatsapp_phone').val(lead.whatsapp_phone || '');
+        $('#modal_telegram_phone').val(lead.telegram_phone || '');
+        $('#modal_telegram_id').val(lead.telegram_id || '');
+        $('#modal_bale_phone').val(lead.bale_phone || '');
+
+        // ریست چک‌باکس «تماس گرفتم» و مخفی‌سازی باکس وضعیت در هر بار باز شدن
+        $('#modal_called').prop('checked', false);
+        $('#statusBoxWrap').addClass('hidden');
 
 
         updateLeadSummary(lead);
@@ -798,17 +875,34 @@ $statuses = [
     }
 
 
+    function toggleStatusBox() {
+        if ($('#modal_called').is(':checked')) {
+            $('#statusBoxWrap').removeClass('hidden');
+        } else {
+            $('#statusBoxWrap').addClass('hidden');
+        }
+    }
+
     $('#editLeadForm').on('submit', function(e) {
         e.preventDefault();
+        const called = $('#modal_called').is(':checked') ? 1 : 0;
         const data = {
             id: $('#modal_lead_id').val(),
             name: $('#modal_name').val(),
-            status: $('#modal_status').val()
+            status: $('#modal_status').val(),
+            whatsapp_phone: $('#modal_whatsapp_phone').val().trim(),
+            telegram_phone: $('#modal_telegram_phone').val().trim(),
+            telegram_id: $('#modal_telegram_id').val().trim(),
+            bale_phone: $('#modal_bale_phone').val().trim(),
+            called: called
         };
 
         $.post('apis/edit_leads.php', data, function(res) {
             if (res.ok) {
                 showSnackbar('لید با موفقیت بروزرسانی شد');
+                // ریست چک‌باکس تا تماس بعدی دوباره ثبت شود
+                $('#modal_called').prop('checked', false);
+                $('#statusBoxWrap').addClass('hidden');
                 setTimeout(() => loadPage(currentPage, currentFilters), 1000);
             } else {
                 showSnackbar(res.error || 'خطا در ذخیره', 'error');
@@ -818,18 +912,34 @@ $statuses = [
         });
     });
 
+    // شمارهٔ هر کانال: اگر کارشناس شمارهٔ اختصاصی وارد کرده باشد همان، وگرنه شمارهٔ اصلی
+    function channelPhone(field) {
+        const v = ($('#' + field).val() || '').trim();
+        return v !== '' ? v : $('#modal_phone').val();
+    }
+
     function sendViaTelegram() {
         const message = $('#message_text').val().trim();
-        const phone = $('#modal_phone').val();
+        const tgId = ($('#modal_telegram_id').val() || '').trim();
+        const phone = channelPhone('modal_telegram_phone');
 
         if (!message) {
             showSnackbar('لطفا متن پیام را وارد کنید', 'error');
             return;
         }
 
+        // اگر آیدی تلگرام وارد شده باشد، مستقیم به آن می‌رویم
+        if (tgId) {
+            const uname = tgId.replace(/^@/, '');
+            window.open('https://t.me/' + encodeURIComponent(uname), '_blank');
+            showSnackbar('در حال باز کردن تلگرام...');
+            return;
+        }
+
         $.post('apis/send_telegram_message.php', {
             phone,
-            message
+            message,
+            lead_id: $('#modal_lead_id').val()
         }, function(res) {
             if (res.ok) {
                 window.open(res.redirect_url, '_blank');
@@ -842,7 +952,7 @@ $statuses = [
 
     function sendViaWhatsapp() {
         const message = $('#message_text').val().trim();
-        const phone = $('#modal_phone').val();
+        const phone = channelPhone('modal_whatsapp_phone');
 
         if (!message) {
             showSnackbar('لطفا متن پیام را وارد کنید', 'error');
@@ -851,13 +961,41 @@ $statuses = [
 
         $.post('apis/send_whatsapp_message.php', {
             phone,
-            message
+            message,
+            lead_id: $('#modal_lead_id').val()
         }, function(res) {
             if (res.ok) {
                 window.open(res.redirect_url, '_blank');
                 showSnackbar('در حال باز کردن واتساپ...');
             } else {
                 showSnackbar(res.error || 'خطا در آماده‌سازی لینک واتساپ', 'error');
+            }
+        });
+    }
+
+    function sendViaBale() {
+        const message = $('#message_text').val().trim();
+        const phone = channelPhone('modal_bale_phone');
+
+        if (!message) {
+            showSnackbar('لطفا متن پیام را وارد کنید', 'error');
+            return;
+        }
+
+        $.post('apis/send_bale_message.php', {
+            phone,
+            message,
+            lead_id: $('#modal_lead_id').val()
+        }, function(res) {
+            if (res.ok) {
+                // متن در کلیپ‌بورد کپی می‌شود (بله لینک گفت‌وگو با شماره ندارد)
+                if (navigator.clipboard && res.copy_text) {
+                    navigator.clipboard.writeText(res.copy_text).catch(() => {});
+                }
+                window.open(res.redirect_url, '_blank');
+                showSnackbar('متن پیام کپی شد؛ در حال باز کردن بله...');
+            } else {
+                showSnackbar(res.error || 'خطا در آماده‌سازی بله', 'error');
             }
         });
     }
@@ -873,7 +1011,8 @@ $statuses = [
 
         $.post('apis/send_sms.php', {
             phone: phone,
-            message: message
+            message: message,
+            lead_id: $('#modal_lead_id').val()
         }, function(res) {
             if (res.ok) {
                 showSnackbar('پیامک با موفقیت ارسال شد');

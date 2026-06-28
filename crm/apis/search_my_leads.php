@@ -34,6 +34,18 @@ if (!empty($filters['project_id'])) {
 }
 $filters['assigned_to'] = (int)$_SESSION["id"];
 
+// تبدیل تاریخ شمسی فیلتر به میلادی (ورودی به‌صورت YYYY/MM/DD یا YYYY-MM-DD)
+$persian = new PersianDate();
+foreach (['from_date', 'to_date'] as $df) {
+    if (!empty($filters[$df])) {
+        $parts = preg_split('/[\/\-]/', $persian->tr_num(trim($filters[$df])));
+        if (count($parts) === 3 && (int)$parts[0] > 1300) {
+            $g = $persian->jalali_to_gregorian((int)$parts[0], (int)$parts[1], (int)$parts[2]);
+            $filters[$df] = sprintf('%04d-%02d-%02d', $g[0], $g[1], $g[2]);
+        }
+    }
+}
+
 $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 100;
 $offset = ($page - 1) * $limit;

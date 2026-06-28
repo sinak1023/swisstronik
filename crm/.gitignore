@@ -1,0 +1,7 @@
+logs/*
+!logs/.gitkeep
+states/*
+!states/.gitkeep
+Invoices/*.pdf
+cronjobs/*.lock
+cronjobs/error_log

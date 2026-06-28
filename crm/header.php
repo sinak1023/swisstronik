@@ -217,6 +217,28 @@
                         </a>
                     </li>
                 <?php endif; ?>
+                <li>
+                    <a href="my_sales" class="block px-4 py-2 hover:bg-muted rounded flex items-center">
+                        <i class='bx bx-trophy text-lg ml-2'></i>
+                        فروش‌های من
+                    </a>
+                </li>
+                <?php if (in_array('pages/admin_reports.php', $permissions)): ?>
+                    <li>
+                        <a href="admin_reports" class="block px-4 py-2 hover:bg-muted rounded flex items-center">
+                            <i class='bx bx-bar-chart-alt-2 text-lg ml-2'></i>
+                            گزارش‌های مدیریتی
+                        </a>
+                    </li>
+                <?php endif; ?>
+                <?php if (in_array('pages/settings.php', $permissions)): ?>
+                    <li>
+                        <a href="settings" class="block px-4 py-2 hover:bg-muted rounded flex items-center">
+                            <i class='bx bx-cog text-lg ml-2'></i>
+                            تنظیمات سیستم
+                        </a>
+                    </li>
+                <?php endif; ?>
                 <?php if (!empty($user_projects)): ?>
                     <div class="mb-6">
                         <div class="flex items-center justify-between mb-3 px-2">

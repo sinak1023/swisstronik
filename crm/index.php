@@ -26,7 +26,7 @@ if ($ex[0] == '/') {
             $permissions = json_decode($role['permissions'], true) ?? [];
         }
     }
-    if ($ex[0] !== "dashboard" && $ex[0] !== "login" && $ex[0] !== "logout" && $ex[0] !== "forgot_password" && $ex[0] !== "reset_password" && $ex[0] !== "profile") {
+    if ($ex[0] !== "dashboard" && $ex[0] !== "login" && $ex[0] !== "logout" && $ex[0] !== "forgot_password" && $ex[0] !== "reset_password" && $ex[0] !== "profile" && $ex[0] !== "my_sales") {
         if (!isset($_SESSION["id"]) || !in_array($root, $permissions)) {
             $_SESSION['permission_denied'] = true;
             $_SESSION['permission'] = $root;

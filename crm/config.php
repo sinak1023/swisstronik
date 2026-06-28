@@ -50,7 +50,11 @@ $config = [
         'apis/delete_template.php' => 'حذف قالب پیام',
         'apis/get_templates.php' => 'دریافت قالب‌های پیام',
         'apis/send_sms.php'=>'ارسال پیامک',
-        'apis/check_transactions.php'=>'مشاهده تراکنش های پرداختی'
+        'apis/check_transactions.php'=>'مشاهده تراکنش های پرداختی',
+        'pages/settings.php' => 'تنظیمات سیستم (پنل پیامک و بات)',
+        'apis/save_settings.php' => 'ذخیره تنظیمات سیستم',
+        'pages/admin_reports.php' => 'گزارش‌های مدیریتی (فعالیت/تماس/پیام/فروش)',
+        'apis/set_sale_payment_type.php' => 'تعیین نوع پرداخت فروش'
     ]
 ];
 

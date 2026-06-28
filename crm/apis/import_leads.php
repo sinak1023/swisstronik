@@ -1,4 +1,6 @@
 <?php
+ini_set('display_errors', '0'); // جلوگیری از خراب شدن خروجی JSON با هشدارهای PHP
+error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE & ~E_DEPRECATED);
 header('Content-Type: application/json; charset=utf-8');
 session_start();
 
@@ -251,6 +253,9 @@ try {
         $leads[] = ['name' => $name, 'phone' => $phone];
     }
 
+    // گزارش مقایسهٔ بین‌کمپینی: شماره‌هایی که (با نرمال‌سازی صفر/۹۸) در پروژه‌های دیگر سابقه دارند
+    $cross_campaign = cross_campaign_report($db, $project_id, $leads);
+
     if (!$preview && !empty($leads)) {
         $imported = $leads_func->import($project_id, $leads);
     }
@@ -259,7 +264,9 @@ try {
         "ok" => true,
         "imported" => $imported ?? 0,
         "skipped" => $skipped,
-        "total_lines" => $line_count
+        "total_lines" => $line_count,
+        "cross_campaign_count" => count($cross_campaign),
+        "cross_campaign" => array_slice($cross_campaign, 0, 100)
     ]);
 } catch (Exception $e) {
     echo json_encode(["ok" => false, "error" => $e->getMessage()]);
@@ -278,4 +285,54 @@ function detect_delimiter($sample)
         }
     }
     return $best;
+}
+
+/**
+ * یافتن شماره‌هایی از این دستهٔ ورودی که در «کمپین/پروژه‌های دیگر» سابقه دارند.
+ * مقایسه بر اساس شمارهٔ نرمال‌شده (۰۹۱۲... و ۹۱۲... یکسان) انجام می‌شود و آخرین
+ * کارشناسی که شماره دستش بوده گزارش می‌شود.
+ */
+function cross_campaign_report($db, $project_id, $leads)
+{
+    if (empty($leads)) return [];
+
+    // نگاشت نرمال‌شده -> شمارهٔ نمایش
+    $norm_map = [];
+    foreach ($leads as $l) {
+        $n = Phone::normalize($l['phone']);
+        if ($n !== '') $norm_map[$n] = $l['phone'];
+    }
+    if (empty($norm_map)) return [];
+
+    $norms = array_keys($norm_map);
+    $norms = array_slice($norms, 0, 500); // محدودسازی برای ایمپورت‌های بزرگ
+    $place = implode(',', array_fill(0, count($norms), '?'));
+
+    $params = $norms;
+    $params[] = $project_id;
+    $rows = $db->fetchAll(
+        "SELECT l.phone_norm, l.phone, l.project_id, p.name AS project_name,
+                l.assigned_to, u.name AS assignee_name, l.created_at
+         FROM leads l
+         LEFT JOIN projects p ON l.project_id = p.id
+         LEFT JOIN users u ON l.assigned_to = u.id
+         WHERE l.phone_norm IN ($place) AND l.project_id != ?
+         ORDER BY l.created_at DESC",
+        $params
+    );
+
+    $report = [];
+    $leads_func = new Leads($db);
+    foreach ($rows as $r) {
+        $key = $r['phone_norm'];
+        if (isset($report[$key])) continue; // فقط جدیدترین سابقه برای هر شماره
+        $last = $leads_func->get_last_handler($r['phone']);
+        $report[$key] = [
+            'phone'        => $norm_map[$key] ?? $r['phone'],
+            'project_name' => $r['project_name'],
+            'last_handler' => $last['user_name'] ?? ($r['assignee_name'] ?? null),
+            'last_date'    => $last['assigned_at'] ?? $r['created_at'],
+        ];
+    }
+    return array_values($report);
 }

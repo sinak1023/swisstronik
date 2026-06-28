@@ -75,6 +75,14 @@ $statuses = [
                 </select>
             </div>
             <div>
+                <label class="block text-sm mb-2">وضعیت تخصیص</label>
+                <select id="search_assigned_status" class="w-full px-4 py-2 border rounded-lg bg-background">
+                    <option value="">همه</option>
+                    <option value="assigned">تخصیص داده شده</option>
+                    <option value="unassigned">تخصیص داده نشده</option>
+                </select>
+            </div>
+            <div>
                 <label class="block text-sm mb-2">وضعیت</label>
                 <select id="search_status" class="w-full px-4 py-2 border rounded-lg bg-background">
                     <option value="">همه</option>
@@ -220,13 +228,21 @@ $statuses = [
 
             <form id="importForm" enctype="multipart/form-data">
                 <!-- مرحله 1: آپلود فایل -->
-                <div id="step1 m-5">
+                <div id="step1" class="m-5">
                     <label class="block text-sm font-medium mb-2">فایل لیدها (CSV, Excel, TXT, JSON, SQL)</label>
                     <input type="file" id="import_file" accept=".csv,.xlsx,.xls,.txt,.json,.sql,.db"
                         class="w-full p-4 border-2 border-dashed rounded-xl bg-background/50 text-center cursor-pointer hover:border-primary transition">
+                    <p id="selectedFileName" class="text-sm text-primary mt-3 text-center hidden"></p>
                     <p class="text-xs text-gray-500 mt-3 text-center">
                         پشتیبانی از: CSV، Excel، TXT، JSON، SQL Dump
                     </p>
+                    <div class="flex justify-center mt-4">
+                        <button type="button" id="uploadBtn" onclick="previewImport()" disabled
+                            class="px-8 py-3 bg-primary hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-bold flex items-center gap-2">
+                            <i class="bx bx-upload"></i>
+                            آپلود و ادامه
+                        </button>
+                    </div>
                 </div>
 
                 <!-- مرحله 2: پیش‌نمایش و تنظیمات -->
@@ -480,6 +496,7 @@ $statuses = [
             name: $('#search_name').val().trim(),
             phone: $('#search_phone').val().trim(),
             assigned_to: $('#search_assigned').val(),
+            assigned_status: $('#search_assigned_status').val(),
             status: $('#search_status').val(),
             project_id: $('#search_project').val() || <?= $project_id ?>
         };
@@ -639,19 +656,40 @@ $statuses = [
         $('#step1, #step2, #importProgress, #importBtn').addClass('hidden');
         $('#step1').removeClass('hidden');
         $('#structuredConfig, #txtConfig').addClass('hidden');
+        $('#selectedFileName').addClass('hidden').text('');
+        $('#uploadBtn').prop('disabled', true);
         importData = {};
         $('#importModal').removeClass('hidden');
     }
 
-    // وقتی فایل انتخاب شد
+    // مرحله ۱: فقط انتخاب فایل — دکمهٔ آپلود فعال می‌شود (بدون اقدام خودکار)
     $('#import_file').on('change', function(e) {
         const file = e.target.files[0];
-        if (!file) return;
+        if (file) {
+            $('#selectedFileName').text('فایل انتخاب‌شده: ' + file.name).removeClass('hidden');
+            $('#uploadBtn').prop('disabled', false);
+        } else {
+            $('#selectedFileName').addClass('hidden');
+            $('#uploadBtn').prop('disabled', true);
+        }
+    });
+
+    // مرحله ۲: با کلیک دکمهٔ آپلود، پیش‌نمایش گرفته می‌شود
+    function previewImport() {
+        const file = $('#import_file')[0].files[0];
+        if (!file) {
+            showSnackbar('ابتدا یک فایل انتخاب کنید', 'error');
+            return;
+        }
 
         const formData = new FormData();
         formData.append('project_id', $('#import_project_id').val());
         formData.append('file', file);
         formData.append('preview', '1');
+
+        const btn = $('#uploadBtn');
+        const orig = btn.html();
+        btn.prop('disabled', true).html('<span class="loading"></span> در حال بارگذاری...');
 
         $.ajax({
             url: 'apis/import_leads.php',
@@ -659,6 +697,7 @@ $statuses = [
             data: formData,
             processData: false,
             contentType: false,
+            dataType: 'json',
             success: function(res) {
                 if (res.ok && res.preview) {
                     importData = res;
@@ -666,12 +705,13 @@ $statuses = [
                     $('#step1').addClass('hidden');
                     $('#step2, #importBtn').removeClass('hidden');
                 } else {
-                    showSnackbar(res.error || 'خطا در پیش‌نمایش', 'error');
+                    showSnackbar(res.error || 'خطا در پیش‌نمایش فایل', 'error');
                 }
             },
-            error: () => showSnackbar('خطا در ارتباط با سرور', 'error')
+            error: () => showSnackbar('خطا در پردازش فایل. فرمت یا محتوای فایل را بررسی کنید', 'error'),
+            complete: () => btn.prop('disabled', false).html(orig)
         });
-    });
+    }
 
     function renderImportPreview(data) {
         const headers = data.headers || [];
@@ -801,20 +841,73 @@ $statuses = [
         };
 
         xhr.onload = function() {
-            const res = JSON.parse(xhr.responseText);
+            $('#importBtn').prop('disabled', false).html('<i class="bx bx-upload"></i> شروع ایمپورت');
+            let res;
+            try {
+                res = JSON.parse(xhr.responseText);
+            } catch (err) {
+                showSnackbar('پاسخ نامعتبر از سرور دریافت شد', 'error');
+                return;
+            }
             closeModal('importModal');
             if (res.ok) {
-                showSnackbar(`ایمپورت موفق! ${res.imported} لید اضافه شد، ${res.skipped} رد شد`);
+                let msg = `ایمپورت موفق! ${res.imported} لید اضافه شد، ${res.skipped} رد شد`;
+                if (res.cross_campaign_count > 0) {
+                    msg += ` — ${res.cross_campaign_count} شماره سابقهٔ کمپین دیگر دارد`;
+                }
+                showSnackbar(msg);
+                if (res.cross_campaign && res.cross_campaign.length > 0) {
+                    showCrossCampaign(res.cross_campaign);
+                }
                 loadPage(currentPage);
             } else {
                 showSnackbar(res.error || 'خطا در ایمپورت', 'error');
             }
+        };
+        xhr.onerror = function() {
+            $('#importBtn').prop('disabled', false).html('<i class="bx bx-upload"></i> شروع ایمپورت');
+            showSnackbar('خطا در ارتباط با سرور', 'error');
         };
 
         $('#importProgress').removeClass('hidden');
         $('#importBtn').prop('disabled', true).html('در حال پردازش...');
         xhr.send(formData);
     });
+
+    // نمایش شماره‌هایی که در کمپین‌های قبلی سابقه داشته‌اند + آخرین کارشناس
+    function showCrossCampaign(items) {
+        let rows = items.map(it => `
+            <tr class="border-t">
+                <td class="px-3 py-2 dir-ltr text-center">${escapeHtml(it.phone)}</td>
+                <td class="px-3 py-2 text-center">${escapeHtml(it.project_name || '—')}</td>
+                <td class="px-3 py-2 text-center">${escapeHtml(it.last_handler || 'بدون کارشناس')}</td>
+                <td class="px-3 py-2 text-center text-xs text-gray-500">${it.last_date ? formatDate(it.last_date) : '—'}</td>
+            </tr>`).join('');
+
+        const html = `
+        <div id="crossModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4" style="z-index:1400;">
+            <div class="bg-surface rounded-2xl shadow-xl border w-full max-w-3xl max-h-[85vh] flex flex-col">
+                <div class="flex justify-between items-center px-6 py-4 border-b">
+                    <h3 class="text-lg font-bold">شماره‌های دارای سابقه در کمپین‌های دیگر (${items.length})</h3>
+                    <button onclick="$('#crossModal').remove()" class="text-gray-500 hover:text-gray-700"><i class="bx bx-x text-2xl"></i></button>
+                </div>
+                <div class="overflow-y-auto p-4">
+                    <table class="w-full text-sm">
+                        <thead class="bg-muted/50"><tr>
+                            <th class="px-3 py-2">شماره</th><th class="px-3 py-2">کمپین/پروژه قبلی</th>
+                            <th class="px-3 py-2">آخرین کارشناس</th><th class="px-3 py-2">تاریخ</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+                <div class="px-6 py-4 border-t flex justify-end">
+                    <button onclick="$('#crossModal').remove()" class="px-6 py-2.5 bg-muted hover:bg-muted/80 rounded-lg">بستن</button>
+                </div>
+            </div>
+        </div>`;
+        $('#crossModal').remove();
+        $('body').append(html);
+    }
 
     function exportLeads(project_id) {
         const btn = $('button[onclick="exportLeads(' + project_id + ')"]');

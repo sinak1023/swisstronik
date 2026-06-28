@@ -30,7 +30,6 @@ $leads_func = new Leads($db);
 $id = (int)($_POST['id'] ?? 0);
 $name = trim($_POST['name'] ?? '');
 $status = $_POST['status'] ?? 'new';
-$notes = trim($_POST['notes'] ?? '');
 
 // روش‌های تماس (اختیاری) — در صورت خالی بودن، شمارهٔ اصلی لید مبناست
 $whatsapp_phone = trim($_POST['whatsapp_phone'] ?? '');
@@ -54,12 +53,16 @@ if (!$lead || $lead['assigned_to'] != $_SESSION["id"]) {
 $update = [
     'name' => $name,
     'status' => $status,
-    'notes' => $notes,
     'whatsapp_phone' => $whatsapp_phone ?: null,
     'telegram_phone' => $telegram_phone ?: null,
     'telegram_id'    => $telegram_id ?: null,
     'bale_phone'     => $bale_phone ?: null,
 ];
+
+// فقط در صورت ارسال صریح، یادداشت ستونی لید را به‌روزرسانی کن (جلوگیری از پاک‌شدن)
+if (isset($_POST['notes'])) {
+    $update['notes'] = trim($_POST['notes']);
+}
 
 if ($called) {
     $update['called'] = 1;

@@ -7,8 +7,11 @@ $persian_date = new PersianDate();
 $total_leads = $db->fetch("SELECT COUNT(*) as cnt FROM leads WHERE assigned_to = ?", [$user_id])['cnt'] ?? 0;
 $total_projects = $db->fetch("SELECT COUNT(DISTINCT p.id) as cnt FROM projects p LEFT JOIN leads l ON l.project_id = p.id WHERE p.created_by = ? OR l.assigned_to = ?", [$user_id, $user_id])['cnt'] ?? 0;
 $today_reminders = $db->fetch("SELECT COUNT(*) as cnt FROM reminders WHERE user_id = ? AND DATE(reminder_datetime) = CURDATE() AND is_done = 0", [$user_id])['cnt'] ?? 0;
-$pending_tasks = $db->fetch("SELECT COUNT(*) as cnt FROM user_tasks WHERE user_id = ? AND is_completed = 0", [$user_id])['cnt'] ?? 0;
-$completed_tasks_today = $db->fetch("SELECT COUNT(*) as cnt FROM user_tasks WHERE user_id = ? AND is_completed = 1 AND DATE(updated_at) = CURDATE()", [$user_id])['cnt'] ?? 0;
+$pending_tasks = $db->fetch("SELECT COUNT(*) as cnt FROM user_tasks WHERE user_id = ? AND is_completed = 0 AND task_date = CURDATE()", [$user_id])['cnt'] ?? 0;
+$completed_tasks_today = $db->fetch("SELECT COUNT(*) as cnt FROM user_tasks WHERE user_id = ? AND is_completed = 1 AND task_date = CURDATE()", [$user_id])['cnt'] ?? 0;
+
+// تعداد فروش‌های امروز این کارشناس
+$today_sales = $db->fetch("SELECT COUNT(*) as cnt FROM sales WHERE user_id = ? AND DATE(transaction_date) = CURDATE()", [$user_id])['cnt'] ?? 0;
 
 
 $recent_leads = $db->fetchAll("SELECT l.name, l.phone, l.status, p.name as project_name, l.created_at FROM leads l LEFT JOIN projects p ON l.project_id = p.id WHERE l.assigned_to = ? ORDER BY l.created_at DESC LIMIT 6", [$user_id]);
@@ -17,7 +20,7 @@ $recent_leads = $db->fetchAll("SELECT l.name, l.phone, l.status, p.name as proje
 $upcoming_reminders = $db->fetchAll("SELECT r.*, l.name as lead_name FROM reminders r LEFT JOIN leads l ON r.lead_id = l.id WHERE r.user_id = ? AND r.is_done = 0 AND r.reminder_datetime >= NOW() ORDER BY r.reminder_datetime ASC LIMIT 5", [$user_id]);
 
 
-$user_tasks = $db->fetchAll("SELECT * FROM user_tasks WHERE user_id = ? ORDER BY position ASC, id ASC", [$_SESSION['id']]);
+$user_tasks = $db->fetchAll("SELECT * FROM user_tasks WHERE user_id = ? AND task_date = CURDATE() ORDER BY position ASC, id ASC", [$_SESSION['id']]);
 
 
 ?>
@@ -35,7 +38,7 @@ $user_tasks = $db->fetchAll("SELECT * FROM user_tasks WHERE user_id = ? ORDER BY
     </div>
 
     
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <div class="bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
             <div class="flex items-center justify-between">
                 <div>
@@ -70,6 +73,15 @@ $user_tasks = $db->fetchAll("SELECT * FROM user_tasks WHERE user_id = ? ORDER BY
                     <p class="text-3xl font-bold mt-2 count" data-target="<?= $pending_tasks ?>"><?= $pending_tasks ?></p>
                 </div>
                 <i class='bx bx-task text-5xl opacity-30'></i>
+            </div>
+        </div>
+        <div class="bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-2xl shadow-lg p-6 hover:shadow-xl transition-all">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-emerald-100 text-sm">فروش‌های امروز</p>
+                    <p class="text-3xl font-bold mt-2 count" data-target="<?= $today_sales ?>"><?= $today_sales ?></p>
+                </div>
+                <i class='bx bx-trophy text-5xl opacity-30'></i>
             </div>
         </div>
     </div>

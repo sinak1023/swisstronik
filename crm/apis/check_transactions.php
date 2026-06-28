@@ -161,6 +161,7 @@ if (isset($result['errors'])) {
 
 $newSalesCount = 0;
 $transactions = [];
+$sessions_for_sale = [];
 
 if (isset($result['data']['Session']) && count($result['data']['Session']) > 0) {
     foreach ($result['data']['Session'] as $session) {
@@ -169,11 +170,27 @@ if (isset($result['data']['Session']) && count($result['data']['Session']) > 0) 
             $transactions[] = [
                 'id' => $session['id'],
                 'date' => $session['created_at'],
-                'amount' => number_format($session['amount']/10),
+                'amount' => number_format($session['amount'] / 10),
                 'description' => $session['description'] ?? '-'
+            ];
+
+            // برای پردازش فروش: شناسه، تاریخ و مبلغ خام
+            $sessions_for_sale[] = [
+                'ref'    => $session['id'],
+                'date'   => $session['created_at'],
+                'amount' => $session['amount'],
             ];
         }
     }
+}
+
+// ثبت فروش فقط برای تراکنش‌های بعد از زمان تخصیص لید + ارسال اعلان‌ها
+try {
+    $sale_service = new SaleService($db);
+    $new_sales = $sale_service->process($lead, $sessions_for_sale);
+    $newSalesCount = count($new_sales);
+} catch (Exception $e) {
+    error_log('sale process error: ' . $e->getMessage());
 }
 
 echo json_encode([

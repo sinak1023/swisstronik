@@ -102,15 +102,22 @@ try {
     $headers = [];
     $dataRows = [];
 
-    if (in_array($ext, ['xlsx', 'xls'])) {
-        // فقط برای اکسل به PhpSpreadsheet نیاز است
+    if ($ext === 'xlsx') {
+        // خواندن بومی xlsx (بدون نیاز به PhpSpreadsheet) — xlsx یک فایل zip از XML است
+        $all = parse_xlsx($tmp_path);
+        if (!empty($all)) {
+            $headers = array_map(function ($v) { return trim((string)$v); }, $all[0]);
+            $dataRows = array_slice($all, 1);
+        }
+    } elseif ($ext === 'xls') {
+        // فرمت قدیمی باینری xls فقط با PhpSpreadsheet خوانده می‌شود
         if (!file_exists(__DIR__ . '/../vendor/autoload.php')) {
-            echo json_encode(["ok" => false, "error" => "کتابخانهٔ خواندن اکسل (vendor) روی سرور موجود نیست. لطفاً فایل را به‌صورت CSV ذخیره و آپلود کنید."]);
+            echo json_encode(["ok" => false, "error" => "فرمت قدیمی xls روی این سرور پشتیبانی نمی‌شود. لطفاً فایل را به‌صورت xlsx یا CSV ذخیره و آپلود کنید."]);
             exit();
         }
         require_once __DIR__ . '/../vendor/autoload.php';
         if (!class_exists('PhpOffice\\PhpSpreadsheet\\IOFactory')) {
-            echo json_encode(["ok" => false, "error" => "کتابخانهٔ اکسل ناقص است. لطفاً فایل را به‌صورت CSV آپلود کنید."]);
+            echo json_encode(["ok" => false, "error" => "خواندن xls ممکن نشد. لطفاً فایل را به‌صورت xlsx یا CSV آپلود کنید."]);
             exit();
         }
         $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($tmp_path);
@@ -312,6 +319,101 @@ try {
     ]);
 } catch (Throwable $e) {
     echo json_encode(["ok" => false, "error" => "خطا در پردازش فایل: " . $e->getMessage()]);
+}
+
+/** تبدیل مرجع ستون اکسل ("B12") به اندیس صفرپایه (1) */
+function xlsx_col_to_idx($ref)
+{
+    preg_match('/^([A-Z]+)/', strtoupper($ref), $m);
+    $letters = $m[1] ?? 'A';
+    $n = 0;
+    for ($i = 0; $i < strlen($letters); $i++) {
+        $n = $n * 26 + (ord($letters[$i]) - 64);
+    }
+    return $n - 1;
+}
+
+/**
+ * خواندن فایل xlsx به‌صورت بومی با ZipArchive + DOMDocument (بدون PhpSpreadsheet).
+ * خروجی: آرایه‌ای از ردیف‌ها که هر ردیف آرایه‌ای از مقادیر ستون‌هاست.
+ */
+function parse_xlsx($path)
+{
+    if (!class_exists('ZipArchive')) {
+        throw new Exception('افزونهٔ ZipArchive روی سرور فعال نیست؛ فایل را CSV کنید.');
+    }
+    $zip = new ZipArchive();
+    if ($zip->open($path) !== true) {
+        throw new Exception('فایل اکسل قابل باز شدن نیست (احتمالاً خراب است).');
+    }
+
+    // رشته‌های اشتراکی
+    $shared = [];
+    $ssXml = $zip->getFromName('xl/sharedStrings.xml');
+    if ($ssXml !== false && $ssXml !== '') {
+        $d = new DOMDocument();
+        @$d->loadXML($ssXml, LIBXML_NOENT | LIBXML_NONET | LIBXML_PARSEHUGE);
+        foreach ($d->getElementsByTagName('si') as $si) {
+            $txt = '';
+            foreach ($si->getElementsByTagName('t') as $t) {
+                $txt .= $t->textContent;
+            }
+            $shared[] = $txt;
+        }
+    }
+
+    // یافتن اولین شیت
+    $sheetName = 'xl/worksheets/sheet1.xml';
+    if ($zip->locateName($sheetName) === false) {
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $nm = $zip->getNameIndex($i);
+            if (preg_match('#^xl/worksheets/sheet\d+\.xml$#', $nm)) {
+                $sheetName = $nm;
+                break;
+            }
+        }
+    }
+    $sheetXml = $zip->getFromName($sheetName);
+    $zip->close();
+    if ($sheetXml === false) {
+        throw new Exception('شیت داده در فایل اکسل یافت نشد.');
+    }
+
+    $d = new DOMDocument();
+    @$d->loadXML($sheetXml, LIBXML_NOENT | LIBXML_NONET | LIBXML_PARSEHUGE);
+    $rows = [];
+    foreach ($d->getElementsByTagName('row') as $row) {
+        $cells = [];
+        $max = -1;
+        $auto = 0;
+        foreach ($row->getElementsByTagName('c') as $c) {
+            $ref = $c->getAttribute('r');
+            $idx = $ref !== '' ? xlsx_col_to_idx($ref) : $auto;
+            $auto = $idx + 1;
+            $type = $c->getAttribute('t');
+            $val = '';
+            if ($type === 'inlineStr') {
+                foreach ($c->getElementsByTagName('t') as $tt) {
+                    $val .= $tt->textContent;
+                }
+            } else {
+                $vEl = $c->getElementsByTagName('v')->item(0);
+                $raw = $vEl ? $vEl->textContent : '';
+                $val = ($type === 's') ? ($shared[(int)$raw] ?? '') : $raw;
+            }
+            $cells[$idx] = trim($val);
+            if ($idx > $max) $max = $idx;
+        }
+        $line = [];
+        for ($i = 0; $i <= $max; $i++) {
+            $line[] = $cells[$i] ?? '';
+        }
+        // ردیف کاملاً خالی را نادیده بگیر
+        if (implode('', $line) !== '') {
+            $rows[] = $line;
+        }
+    }
+    return $rows;
 }
 
 function detect_delimiter($sample)

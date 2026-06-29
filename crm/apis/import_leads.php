@@ -2,6 +2,7 @@
 ini_set('display_errors', '0'); // جلوگیری از خراب شدن خروجی JSON با هشدارهای PHP
 error_reporting(E_ALL & ~E_WARNING & ~E_NOTICE & ~E_DEPRECATED);
 header('Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../boot_session.php';
 session_start();
 
 // در صورت بروز خطای کشنده (Fatal)، خروجی JSON معتبر برگردانده شود

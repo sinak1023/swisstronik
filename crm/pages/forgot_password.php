@@ -9,7 +9,7 @@ if (isset($_SESSION["id"]) && (int)$_SESSION["id"] > 0) {
 <div class="min-h-screen flex items-center justify-center">
     <div class="grid grid-cols-1 md:grid-cols-2 max-w-4xl w-full mx-auto shadow-lg rounded-lg overflow-hidden">
         <div class="hidden md:flex items-center justify-center   bg-surface">
-            <img src="/crm/assets/img/forgot_password.png" alt="تصویر دسکتاپ" class="w-full h-full p-5 object-cover">
+            <img src="assets/img/forgot_password.png" alt="تصویر دسکتاپ" class="w-full h-full p-5 object-cover">
         </div>
         <div class="bg-surface p-8 mx-4 pt-0 md:mx-0">
             <h2 class="text-2xl font-bold mb-6 text-center text-text mt-12">فراموشی رمز عبور</h2>

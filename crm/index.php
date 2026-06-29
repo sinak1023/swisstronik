@@ -1,9 +1,7 @@
 <?php
-// طولانی‌کردن عمر نشست تا کاربر زود از سیستم خارج نشود (۲۴ ساعت)
-@ini_set('session.gc_maxlifetime', 86400);
-@ini_set('session.cookie_lifetime', 86400);
+// نشست پایدار و مستقل از هاست (باید قبل از session_start اجرا شود)
+require_once __DIR__ . '/boot_session.php';
 if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params(86400);
     session_start();
 }
 ini_set('display_errors', 0);
@@ -24,14 +22,19 @@ if ($ex[0] == '/') {
     require 'apis/' . $ex[1] . '.php';
 } elseif (file_exists('pages/' . $ex[0] . '.php')) {
     $root = 'pages/' . $ex[0] . '.php';
-    $users_function = new Users($db);
-    $admin_info = $users_function->get_by_id($_SESSION["id"]);
-    $permissions = json_decode($admin_info['permissions'], true) ?? [];
-    if ($admin_info['role_id'] > 0) {
-        $roles_function = new Roles($db);
-        $role = $roles_function->get_by_id($admin_info['role_id']);
-        if ($role) {
-            $permissions = json_decode($role['permissions'], true) ?? [];
+    $permissions = [];
+    if (isset($_SESSION["id"])) {
+        $users_function = new Users($db);
+        $admin_info = $users_function->get_by_id($_SESSION["id"]);
+        if ($admin_info) {
+            $permissions = json_decode($admin_info['permissions'] ?? '[]', true) ?? [];
+            if (($admin_info['role_id'] ?? 0) > 0) {
+                $roles_function = new Roles($db);
+                $role = $roles_function->get_by_id($admin_info['role_id']);
+                if ($role) {
+                    $permissions = json_decode($role['permissions'] ?? '[]', true) ?? [];
+                }
+            }
         }
     }
     if ($ex[0] !== "dashboard" && $ex[0] !== "login" && $ex[0] !== "logout" && $ex[0] !== "forgot_password" && $ex[0] !== "reset_password" && $ex[0] !== "profile" && $ex[0] !== "my_sales") {

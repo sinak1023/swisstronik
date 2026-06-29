@@ -1,5 +1,6 @@
 <?php
 header(header: 'Content-Type: application/json; charset=utf-8');
+require_once __DIR__ . '/../boot_session.php';
 session_start();
 
 if (!isset($_SESSION["id"])) {

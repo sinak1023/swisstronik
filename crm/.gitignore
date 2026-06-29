@@ -7,3 +7,7 @@ cronjobs/*.lock
 cronjobs/error_log
 db_config.php
 install.lock
+
+sessions/*
+!sessions/.gitkeep
+!sessions/.htaccess

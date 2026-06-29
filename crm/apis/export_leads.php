@@ -1,5 +1,6 @@
 <?php
 
+require_once __DIR__ . '/../boot_session.php';
 session_start();
 
 if (!isset($_SESSION["id"])) {

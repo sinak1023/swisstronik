@@ -91,9 +91,14 @@ class SaleService
         $sms = new Sms($this->db);
         $tg  = new Telegram($this->db);
 
-        // پیامک به کارشناس
+        // پیامک به کارشناس (عادی یا پترن بر اساس تنظیمات)
         if (!empty($expert['phone'])) {
-            $sms->send($expert['phone'], "تبریک! شما یک فروش جدید به لید «{$leadName}» ثبت کردید. مبلغ: {$amount}");
+            $sms->notify(
+                $expert['phone'],
+                'sale_expert',
+                ['lead' => $leadName, 'amount' => $amount],
+                "تبریک! شما یک فروش جدید به لید «{$leadName}» ثبت کردید. مبلغ: {$amount}"
+            );
         }
         // نوتیف تلگرام به کارشناس
         $expertChat = Telegram::resolveChatId($expert);
@@ -101,10 +106,15 @@ class SaleService
             $tg->sendMessage($expertChat, "🎉 <b>فروش جدید</b>\n\nتبریک! شما به لید «{$leadName}» فروختید.\nمبلغ: {$amount}");
         }
 
-        // پیامک به مدیر
+        // پیامک به مدیر (عادی یا پترن بر اساس تنظیمات)
         $managerPhone = $this->settings->get('manager_phone', '');
         if (!empty($managerPhone)) {
-            $sms->send($managerPhone, "کارشناس «{$expert['name']}» یک فروش جدید به لید «{$leadName}» ثبت کرد. مبلغ: {$amount}");
+            $sms->notify(
+                $managerPhone,
+                'sale_manager',
+                ['expert' => $expert['name'], 'lead' => $leadName, 'amount' => $amount],
+                "کارشناس «{$expert['name']}» یک فروش جدید به لید «{$leadName}» ثبت کرد. مبلغ: {$amount}"
+            );
         }
         // نوتیف تلگرام به مدیر
         $managerChat = $this->settings->get('manager_telegram_id', '');

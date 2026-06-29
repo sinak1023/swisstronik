@@ -36,11 +36,8 @@ if (empty($reminder_date) || empty($reminder_time) || empty($reminder_text)) {
     echo json_encode(['ok' => false, 'error' => 'همه فیلدها الزامی هستند']);
     exit;
 }
-$telegram_info = !empty($admin_info['telegram_info']) ? json_decode($admin_info['telegram_info'], true) : false;
-if (!$telegram_info) {
-    echo json_encode(['ok' => false, 'error' => 'ابتدا تلگرام خود را از طریق منوی بالا سمت چپ متصل کنید']);
-    exit;
-}
+// اتصال تلگرام دیگر الزامی نیست؛ یادآوری با پیامک ارسال می‌شود و نوتیف تلگرام
+// فقط در صورت داشتن آیدی عددی (تنظیم‌شده هنگام ساخت کاربر) ارسال خواهد شد.
 try {
 
 

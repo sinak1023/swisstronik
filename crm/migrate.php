@@ -103,6 +103,13 @@ try {
         'bot_token'             => $config['bot_token'] ?? '',
         'manager_phone'         => '',                   // شماره مدیر برای دریافت پیامک فروش
         'manager_telegram_id'   => '',                   // آی‌دی عددی تلگرام مدیر
+        'ippanel_apikey'        => '',                   // کلید API آی‌پی‌پنل (برای ارسال با پترن)
+        'sms_mode'              => 'normal',             // normal | pattern
+        'pattern_reminder'      => '',                   // کد پترن یادآوری
+        'pattern_sale_expert'   => '',                   // کد پترن فروش (به کارشناس)
+        'pattern_sale_manager'  => '',                   // کد پترن فروش (به مدیر)
+        'zarinpal_token'        => '',                   // توکن دسترسی زرین‌پال
+        'zarinpal_terminal_id'  => '',                   // شناسهٔ ترمینال زرین‌پال
     ];
     $ins = $pdo->prepare("INSERT IGNORE INTO `settings` (`skey`, `svalue`) VALUES (?, ?)");
     foreach ($defaults as $k => $v) {

@@ -29,10 +29,13 @@ $settings = new Settings($db);
 // فقط کلیدهای مجاز قابل ذخیره‌اند
 $allowed = [
     'active_sms_panel',
-    'ippanel_username', 'ippanel_password', 'ippanel_number',
+    'ippanel_username', 'ippanel_password', 'ippanel_number', 'ippanel_apikey',
     'melipayamak_username', 'melipayamak_password', 'melipayamak_number',
     'bot_token',
     'manager_phone', 'manager_telegram_id',
+    'sms_mode',
+    'pattern_reminder', 'pattern_sale_expert', 'pattern_sale_manager',
+    'zarinpal_token', 'zarinpal_terminal_id',
 ];
 
 $saved = [];
@@ -41,6 +44,9 @@ foreach ($allowed as $key) {
         $val = trim($_POST[$key]);
         if ($key === 'active_sms_panel' && !in_array($val, ['ippanel', 'melipayamak'])) {
             $val = 'ippanel';
+        }
+        if ($key === 'sms_mode' && !in_array($val, ['normal', 'pattern'])) {
+            $val = 'normal';
         }
         $settings->set($key, $val);
         $saved[] = $key;

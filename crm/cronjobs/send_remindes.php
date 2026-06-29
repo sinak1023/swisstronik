@@ -43,9 +43,14 @@ try {
             . ($lead_phone ? " برای شمارهٔ {$lead_phone}" : '')
             . " (ساعت {$when}) است.";
 
-        // پیامک به کارشناس
+        // پیامک به کارشناس (عادی یا پترن بر اساس تنظیمات)
         if (!empty($reminder['user_phone'])) {
-            $sms->send($reminder['user_phone'], $msg);
+            $sms->notify(
+                $reminder['user_phone'],
+                'reminder',
+                ['text' => $text, 'time' => $when],
+                $msg
+            );
         }
 
         // نوتیف تلگرام به کارشناس

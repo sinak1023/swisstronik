@@ -309,6 +309,13 @@ function seed_settings($pdo, $bot_token, $manager_phone)
         'bot_token'            => $bot_token,
         'manager_phone'        => $manager_phone,
         'manager_telegram_id'  => '',
+        'ippanel_apikey'       => '',
+        'sms_mode'             => 'normal',
+        'pattern_reminder'     => '',
+        'pattern_sale_expert'  => '',
+        'pattern_sale_manager' => '',
+        'zarinpal_token'       => '',
+        'zarinpal_terminal_id' => '',
     ];
     $ins = $pdo->prepare("INSERT IGNORE INTO `settings` (`skey`, `svalue`) VALUES (?, ?)");
     foreach ($defaults as $k => $v) {

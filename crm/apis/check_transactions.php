@@ -53,9 +53,11 @@ if (session_status() === PHP_SESSION_ACTIVE) {
     session_write_close();
 }
 
-// تنظیمات زرین‌پال
+// تنظیمات زرین‌پال (توکن و ترمینال از تنظیمات پنل، با fallback به مقدار پیش‌فرض)
+$zp_settings = new Settings($db);
 $url = 'https://next.zarinpal.com/api/v4/graphql';
-$access_token = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiMmUwMWJhMTEzYWFkNjNlNmM2ZmFjNWEyMDUwNTRkMDE4MTU0MjUxMzk1MjRkZjdjNTg4ODBiODRkZjA4MmQyYzRhMTU1NDhiNzdmYzZjM2MiLCJpYXQiOjE3NTc4NDE1MjQuNjkwODU3LCJuYmYiOjE3NTc4NDE1MjQuNjkwODY3LCJleHAiOjE5MTU2MDc5MjQuNjMxMDU4LCJzdWIiOiIxNTE5OTQzIiwic2NvcGVzIjpbXX0.YpI6IHx16xa7vonbFInTEK-cfBRAJCPgUQCFpDe9_OpedkAfK3_tkteJ3PdZcT5RZJL457hut6MuCsTy-3Kluk-Uy8JeKW7X-pVD5MFgVOTmSeZ2Ji5fDwreyHqbXaTspKSyclT-pgks-zetH7XttvoB1McenoGYqQ10FhiVZ0CQQrkQbgPNhKlw5XrAX6hX6kGbGEwwmmhjq49Mkr1D-z4axVX96iXqaT--vpC0oqTzYPSUNwB9ac4z5xEMIhZ-quQfV_nyBHKYn7B4jRs3aykRs1szXVLDYayN4TipFaNe2q2sk2gbPIuhFQzFGpAo9SK7rpYZnKHJQ1kn_uEzijinNxHaCfwjAZHLhUH5NxxXUNMeVEHFI5OgtEDPWf2wogGYs7nWySnzgIjowXAy5q3eW-5OaCgUfcRSBzZ0-a83XtfP8rEZuYIUVUOYxCAjqhHOaFFu6I-wGVdgIfYN_XqJB-ZhrVPUDGfa9f03MJTqJqzrJ4JoKCu3jCREZ29lnkXpMClxSQUKzXXimZcRjnDyH_BIhDuDKim3XKkgUepCNcCan-hXQ2N6l5oUO2DzhnQriK4Os5PrK-qDQXOwGtcEaJGvoj2D6FA2xt4yPqQ3UtC8vSJY8u_pR6OzXw2BNlZRHiu1feoF6IDsf5oNW2BygiykZGa_rOTbDrOo5qM';
+$zp_terminal_id = $zp_settings->get('zarinpal_terminal_id', '373234');
+$access_token = $zp_settings->get('zarinpal_token', '') ?: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiMmUwMWJhMTEzYWFkNjNlNmM2ZmFjNWEyMDUwNTRkMDE4MTU0MjUxMzk1MjRkZjdjNTg4ODBiODRkZjA4MmQyYzRhMTU1NDhiNzdmYzZjM2MiLCJpYXQiOjE3NTc4NDE1MjQuNjkwODU3LCJuYmYiOjE3NTc4NDE1MjQuNjkwODY3LCJleHAiOjE5MTU2MDc5MjQuNjMxMDU4LCJzdWIiOiIxNTE5OTQzIiwic2NvcGVzIjpbXX0.YpI6IHx16xa7vonbFInTEK-cfBRAJCPgUQCFpDe9_OpedkAfK3_tkteJ3PdZcT5RZJL457hut6MuCsTy-3Kluk-Uy8JeKW7X-pVD5MFgVOTmSeZ2Ji5fDwreyHqbXaTspKSyclT-pgks-zetH7XttvoB1McenoGYqQ10FhiVZ0CQQrkQbgPNhKlw5XrAX6hX6kGbGEwwmmhjq49Mkr1D-z4axVX96iXqaT--vpC0oqTzYPSUNwB9ac4z5xEMIhZ-quQfV_nyBHKYn7B4jRs3aykRs1szXVLDYayN4TipFaNe2q2sk2gbPIuhFQzFGpAo9SK7rpYZnKHJQ1kn_uEzijinNxHaCfwjAZHLhUH5NxxXUNMeVEHFI5OgtEDPWf2wogGYs7nWySnzgIjowXAy5q3eW-5OaCgUfcRSBzZ0-a83XtfP8rEZuYIUVUOYxCAjqhHOaFFu6I-wGVdgIfYN_XqJB-ZhrVPUDGfa9f03MJTqJqzrJ4JoKCu3jCREZ29lnkXpMClxSQUKzXXimZcRjnDyH_BIhDuDKim3XKkgUepCNcCan-hXQ2N6l5oUO2DzhnQriK4Os5PrK-qDQXOwGtcEaJGvoj2D6FA2xt4yPqQ3UtC8vSJY8u_pR6OzXw2BNlZRHiu1feoF6IDsf5oNW2BygiykZGa_rOTbDrOo5qM';
 
 // GraphQL Query
 $query = '
@@ -115,7 +117,7 @@ $variables = [
     'limit' => 50,
     'mobile' => $lead['phone'],
     'offset' => 0,
-    'terminal_id' => '373234'
+    'terminal_id' => $zp_terminal_id
 ];
 
 // آماده‌سازی داده‌های درخواست

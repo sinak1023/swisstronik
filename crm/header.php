@@ -152,19 +152,6 @@
                             <i class='bx bx-moon text-xl' id="theme-icon"></i>
                             <span id="theme-text">حالت تاریک</span>
                         </a>
-                        <?php
-                        $telegram_info = !empty($user_info['telegram_info']) ? json_decode($user_info['telegram_info'], true) : null;
-                        if ($telegram_info): ?>
-                            <a href="javascript:void(0);" onclick="disconnectTelegram(<?= $user_info['id'] ?>)" class="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-red-600 dark:text-red-400">
-                                <i class='bx bxl-telegram text-xl'></i>
-                                <span>قطع ارتباط تلگرام</span>
-                            </a>
-                        <?php else: ?>
-                            <a href="https://t.me/CrmDeomoConnectBot" target="_blank" class="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-blue-600 dark:text-blue-400">
-                                <i class='bx bxl-telegram text-xl'></i>
-                                <span>اتصال به تلگرام</span>
-                            </a>
-                        <?php endif; ?>
                         <a href="logout" class="flex items-center gap-3 px-4 py-3 hover:bg-muted transition-colors text-red-600 dark:text-red-400">
                             <i class='bx bx-log-out text-xl'></i>
                             <span>خروج</span>

@@ -82,9 +82,10 @@ class Projects
  
     public function get_all_with_pagination($filters = [], $limit = 10, $offset = 0)
     {
-        $sql = "SELECT p.*, u.name as creator_name 
-                FROM {$this->table} p 
-                LEFT JOIN users u ON p.created_by = u.id 
+        $sql = "SELECT p.*, u.name as creator_name,
+                       (SELECT COUNT(*) FROM leads l WHERE l.project_id = p.id) AS lead_count
+                FROM {$this->table} p
+                LEFT JOIN users u ON p.created_by = u.id
                 WHERE 1=1";
         $params = [];
 
@@ -93,7 +94,7 @@ class Projects
             $params[] = "%{$filters['name']}%";
         }
 
-        
+
         $current_user = (new Users($this->db))->get_by_id($_SESSION['id']);
         if ($current_user['role_id'] != 1) {
             $sql .= " AND p.created_by = ?";

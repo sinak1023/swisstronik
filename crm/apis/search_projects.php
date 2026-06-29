@@ -61,7 +61,8 @@ $result = [
             'name'        => $p['name'] ?? '',
             'description' => $p['description'] ?? '',
             'creator_name'=> $creatorMap[$p['created_by']],
-            'created_at'  => $p['created_at']
+            'created_at'  => $p['created_at'],
+            'lead_count'  => (int)($p['lead_count'] ?? 0)
         ];
     }, $list),
     'total'       => $total,

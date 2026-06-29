@@ -223,11 +223,7 @@ $limit = 10;
                 }
 
                 $('#paginationInfo').text(`نمایش ${data.projects.length} از ${data.total} پروژه`);
-                const pages = [];
-                for (let i = 1; i <= data.total_pages; i++) {
-                    pages.push(`<a onclick="loadPage(${i}, currentFilters)" class="px-3 py-1.5 rounded-lg text-sm font-medium ${i === page ? 'bg-primary text-white' : 'bg-muted hover:bg-muted/80 text-text'} transition-colors cursor-pointer">${i}</a>`);
-                }
-                $('#paginationLinks').html(pages.join(''));
+                renderPagination(page, data.total_pages);
             } else {
                 showSnackbar(data.error, 'error');
             }
@@ -235,6 +231,42 @@ $limit = 10;
     }
 
     
+    function renderPagination(page, pages) {
+        const links = $('#paginationLinks').empty();
+        if (!pages || pages <= 1) return;
+
+        const btn = (label, target, opts = {}) => {
+            const disabled = opts.disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer';
+            const active = opts.active ? 'bg-primary text-white' : 'bg-muted hover:bg-muted/80 text-text';
+            return `<a ${opts.disabled ? '' : `onclick="loadPage(${target}, currentFilters)"`} class="px-3 py-1.5 rounded-lg text-sm font-medium ${active} ${disabled} transition-colors">${label}</a>`;
+        };
+
+        let html = '';
+        html += btn('« اول', 1, {disabled: page === 1});
+        html += btn('‹', page - 1, {disabled: page === 1});
+        let start = Math.max(1, page - 2);
+        let end = Math.min(pages, page + 2);
+        if (start > 1) html += `<span class="px-2 text-text/50">…</span>`;
+        for (let i = start; i <= end; i++) html += btn(i, i, {active: i === page});
+        if (end < pages) html += `<span class="px-2 text-text/50">…</span>`;
+        html += btn('›', page + 1, {disabled: page === pages});
+        html += btn('آخر »', pages, {disabled: page === pages});
+        html += `<span class="inline-flex items-center gap-1 mr-2">
+            <input type="number" min="1" max="${pages}" id="jumpPage" placeholder="${page}"
+                class="w-16 px-2 py-1.5 border rounded-lg bg-background text-text text-sm text-center"
+                onkeydown="if(event.key==='Enter'){jumpToPage(${pages})}">
+            <button onclick="jumpToPage(${pages})" class="px-3 py-1.5 rounded-lg text-sm bg-primary text-white">برو</button>
+        </span>`;
+        links.html(html);
+    }
+
+    function jumpToPage(pages) {
+        let p = parseInt($('#jumpPage').val());
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > pages) p = pages;
+        loadPage(p, currentFilters);
+    }
+
     $(document).ready(() => loadPage());
 
     

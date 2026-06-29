@@ -511,11 +511,46 @@ $statuses = [
     function renderPagination(page, pages, total) {
         $('#paginationInfo').text(`صفحه ${page} از ${pages} (کل: ${total})`);
         const links = $('#paginationLinks').empty();
+        if (pages <= 1) return;
 
-        for (let i = 1; i <= pages; i++) {
-            const active = i === page ? 'bg-primary text-white' : 'bg-muted hover:bg-muted/80 text-text';
-            links.append(`<a onclick="loadPage(${i}, currentFilters)" class="px-3 py-1.5 rounded-lg text-sm font-medium ${active} transition-colors cursor-pointer">${i}</a>`);
+        const btn = (label, target, opts = {}) => {
+            const disabled = opts.disabled ? 'opacity-40 cursor-not-allowed pointer-events-none' : 'cursor-pointer';
+            const active = opts.active ? 'bg-primary text-white' : 'bg-muted hover:bg-muted/80 text-text';
+            return `<a ${opts.disabled ? '' : `onclick="loadPage(${target}, currentFilters)"`} class="px-3 py-1.5 rounded-lg text-sm font-medium ${active} ${disabled} transition-colors">${label}</a>`;
+        };
+
+        let html = '';
+        html += btn('« اول', 1, {disabled: page === 1});
+        html += btn('‹', page - 1, {disabled: page === 1});
+
+        // پنجره‌ای از صفحات اطراف صفحهٔ جاری
+        let start = Math.max(1, page - 2);
+        let end = Math.min(pages, page + 2);
+        if (start > 1) html += `<span class="px-2 text-text/50">…</span>`;
+        for (let i = start; i <= end; i++) {
+            html += btn(i, i, {active: i === page});
         }
+        if (end < pages) html += `<span class="px-2 text-text/50">…</span>`;
+
+        html += btn('›', page + 1, {disabled: page === pages});
+        html += btn('آخر »', pages, {disabled: page === pages});
+
+        // پرش مستقیم به صفحه
+        html += `<span class="inline-flex items-center gap-1 mr-2">
+            <input type="number" min="1" max="${pages}" id="jumpPage" placeholder="${page}"
+                class="w-16 px-2 py-1.5 border rounded-lg bg-background text-text text-sm text-center"
+                onkeydown="if(event.key==='Enter'){jumpToPage(${pages})}">
+            <button onclick="jumpToPage(${pages})" class="px-3 py-1.5 rounded-lg text-sm bg-primary text-white">برو</button>
+        </span>`;
+
+        links.html(html);
+    }
+
+    function jumpToPage(pages) {
+        let p = parseInt($('#jumpPage').val());
+        if (isNaN(p) || p < 1) p = 1;
+        if (p > pages) p = pages;
+        loadPage(p, currentFilters);
     }
 
 

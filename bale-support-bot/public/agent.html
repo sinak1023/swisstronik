@@ -58,13 +58,18 @@
                 <span id="reply-text"></span>
                 <button class="btn sm ghost" id="reply-cancel">✕</button>
               </div>
-              <div class="composer">
+              <div class="composer" id="composer-normal">
                 <button class="icon-btn" id="attach-btn" title="پیوست فایل">📎</button>
-                <button class="icon-btn" id="voice-btn" title="ارسال ویس">🎤</button>
+                <button class="icon-btn" id="voice-btn" title="ضبط ویس">🎤</button>
                 <textarea id="composer-text" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
                 <button class="btn" id="send-btn">ارسال</button>
                 <input type="file" id="file-input" class="hidden" />
-                <input type="file" id="voice-input" class="hidden" accept="audio/*" />
+              </div>
+              <div class="composer recording-bar hidden" id="composer-recording">
+                <button class="icon-btn danger-btn" id="rec-cancel" title="لغو">🗑</button>
+                <div class="rec-meta"><span class="rec-dot"></span><span id="rec-timer">0:00</span>
+                  <span style="color:var(--muted)">در حال ضبط… برای ارسال دکمه ➤ را بزنید</span></div>
+                <button class="icon-btn send-rec" id="rec-send" title="ارسال ویس">➤</button>
               </div>
             </div>
           </div>
@@ -106,6 +111,7 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/vendor/recorder.min.js"></script>
   <script src="/js/common.js"></script>
   <script src="/js/agent.js"></script>
 </body>

@@ -139,6 +139,12 @@ tr:hover td { background: #fafbff; }
 .composer .icon-btn { background: #eef2fb; border: 0; border-radius: 10px; width: 42px; height: 42px; font-size: 18px; color: var(--primary); flex: 0 0 auto; }
 .reply-preview { background: #eef2fb; border-right: 3px solid var(--primary); padding: 6px 10px; font-size: 12px; display: none; align-items: center; justify-content: space-between; }
 .reply-preview.show { display: flex; }
+.recording-bar { align-items: center; }
+.recording-bar .rec-meta { flex: 1; display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.rec-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--red); animation: pulse 1s infinite; display: inline-block; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+.icon-btn.danger-btn { background: #fde9e7; color: var(--red); }
+.icon-btn.send-rec { background: var(--primary); color: #fff; }
 .empty-chat { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 
 /* toast / popup */

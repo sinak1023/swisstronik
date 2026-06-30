@@ -138,6 +138,7 @@ function renderMedia(m) {
   if (m.type === 'photo') return `<a href="${url}" target="_blank"><img class="media" src="${url}"/></a>${cap}`;
   if (m.type === 'video') return `<video class="media" controls src="${url}"></video>${cap}`;
   if (m.type === 'voice' || m.type === 'audio') return `<audio controls src="${url}"></audio>${cap}`;
+  if (m.type === 'sticker') return `<img class="media" style="max-width:130px" src="${url}"/>${cap}`;
   return `<a class="file-chip" href="${url}" target="_blank">📎 ${esc(m.file_name || 'دانلود فایل')}</a>${cap}`;
 }
 function attachBubbleTools() {
@@ -202,9 +203,16 @@ function setupComposer() {
   });
   document.getElementById('send-btn').addEventListener('click', sendText);
   document.getElementById('attach-btn').addEventListener('click', () => document.getElementById('file-input').click());
-  document.getElementById('voice-btn').addEventListener('click', () => document.getElementById('voice-input').click());
-  document.getElementById('file-input').addEventListener('change', (e) => sendMedia(e.target.files[0], ''));
-  document.getElementById('voice-input').addEventListener('change', (e) => sendMedia(e.target.files[0], 'voice'));
+  document.getElementById('file-input').addEventListener('change', (e) => { sendMedia(e.target.files[0], ''); e.target.value = ''; });
+  // voice recording (Telegram-like) — records OGG/Opus in the browser
+  document.getElementById('voice-btn').addEventListener('click', startVoiceRecording);
+  document.getElementById('rec-cancel').addEventListener('click', cancelRecording);
+  document.getElementById('rec-send').addEventListener('click', sendRecording);
+  // paste an image directly into the composer (like Telegram)
+  ta.addEventListener('paste', (e) => {
+    const item = [...(e.clipboardData?.items || [])].find((i) => i.type.startsWith('image/'));
+    if (item) { const f = item.getAsFile(); if (f) { e.preventDefault(); sendMedia(f, 'photo'); } }
+  });
   document.getElementById('btn-sat').addEventListener('click', () => satModal('satisfied'));
   document.getElementById('btn-dissat').addEventListener('click', () => satModal('dissatisfied'));
   document.getElementById('back-to-list').addEventListener('click', () => {
@@ -237,8 +245,6 @@ async function sendMedia(file, kind) {
     appendMessage(r.message);
     clearReply();
   } catch (e) { handleApiError(e); }
-  document.getElementById('file-input').value = '';
-  document.getElementById('voice-input').value = '';
 }
 function appendMessage(m) {
   msgById[m.id] = m;
@@ -246,6 +252,63 @@ function appendMessage(m) {
   box.insertAdjacentHTML('beforeend', renderBubble(m));
   attachBubbleTools();
   box.scrollTop = box.scrollHeight;
+}
+
+// ---------- voice recorder (OGG/Opus in-browser, Bale-compatible) ----------
+let recorder = null, recChunks = [], recTimer = null, recStart = 0;
+function recBar(show) {
+  document.getElementById('composer-normal').classList.toggle('hidden', show);
+  document.getElementById('composer-recording').classList.toggle('hidden', !show);
+}
+async function startVoiceRecording() {
+  if (!activeUserId) return;
+  if (typeof Recorder === 'undefined' || (Recorder.isRecordingSupported && !Recorder.isRecordingSupported())) {
+    return toast('ضبط ویس در این مرورگر پشتیبانی نمی‌شود', 'error');
+  }
+  try {
+    recorder = new Recorder({
+      encoderPath: '/vendor/encoderWorker.min.js',
+      encoderApplication: 2048, // VOIP — optimized for speech
+      encoderSampleRate: 48000,
+      numberOfChannels: 1,
+      streamPages: false,
+    });
+    recChunks = [];
+    recorder.ondataavailable = (typed) => recChunks.push(typed);
+    await recorder.start();
+    recBar(true);
+    recStart = Date.now();
+    document.getElementById('rec-timer').textContent = '0:00';
+    recTimer = setInterval(() => {
+      const s = Math.floor((Date.now() - recStart) / 1000);
+      document.getElementById('rec-timer').textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    }, 250);
+  } catch (e) {
+    recorder = null;
+    toast('دسترسی به میکروفون داده نشد', 'error');
+  }
+}
+function endRecUI() { clearInterval(recTimer); recBar(false); }
+async function cancelRecording() {
+  if (recorder) {
+    recorder.ondataavailable = () => {};
+    try { await recorder.stop(); } catch {}
+    try { recorder.close && recorder.close(); } catch {}
+  }
+  recorder = null; recChunks = [];
+  endRecUI();
+}
+function sendRecording() {
+  if (!recorder) return;
+  const minMs = 600;
+  if (Date.now() - recStart < minMs) return toast('ویس خیلی کوتاه است', 'warn', 1500);
+  recorder.onstop = () => {
+    const blob = new Blob(recChunks, { type: 'audio/ogg' });
+    recorder = null; recChunks = [];
+    if (blob.size > 0) sendMedia(new File([blob], 'voice.ogg', { type: 'audio/ogg' }), 'voice');
+  };
+  try { recorder.stop(); } catch { toast('خطا در ضبط ویس', 'error'); }
+  endRecUI();
 }
 
 // ---------- satisfaction ----------

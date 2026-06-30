@@ -57,8 +57,13 @@ async function acceptAndAssign(user) {
 
   if (voicePath) {
     const abs = path.isAbsolute(voicePath) ? voicePath : path.join(config.uploadsDir, voicePath);
+    const ext = path.extname(abs).toLowerCase();
+    // Bale's sendVoice requires audio/ogg; anything else goes as a music file
+    const isOgg = ext === '.ogg' || ext === '.oga';
+    const kind = isOgg ? 'voice' : 'audio';
+    const mime = isOgg ? 'audio/ogg' : ext === '.mp3' ? 'audio/mpeg' : ext === '.m4a' ? 'audio/mp4' : 'audio/mpeg';
     try {
-      await sendMedia(user.id, 'voice', { path: abs, name: path.basename(abs), mime: 'audio/ogg' }, {
+      await sendMedia(user.id, kind, { path: abs, name: path.basename(abs), mime }, {
         agentId,
         direction: 'system',
         local_path: path.relative(config.uploadsDir, abs),
@@ -242,6 +247,13 @@ async function startPolling() {
     return;
   }
   running = true;
+  // validate token (getMe) per Bale docs
+  try {
+    const me = await api.call('getMe', {});
+    if (me && me.username) console.log(`🤖 Bot authorized as @${me.username} (id=${me.id}).`);
+  } catch (e) {
+    console.error('⚠️  getMe failed (check BALE_BOT_TOKEN):', e.message);
+  }
   // drop pending webhook so getUpdates works
   try {
     await api.call('deleteWebhook', {});

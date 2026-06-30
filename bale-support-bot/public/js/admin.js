@@ -109,6 +109,7 @@ function renderAdminMedia(m) {
   if (m.type === 'photo') return `<a href="${url}" target="_blank"><img src="${url}" style="max-width:200px;border-radius:8px"/></a>`;
   if (m.type === 'video') return `<video controls src="${url}" style="max-width:220px;border-radius:8px"></video>`;
   if (m.type === 'voice' || m.type === 'audio') return `<audio controls src="${url}"></audio>`;
+  if (m.type === 'sticker') return `<img src="${url}" style="max-width:120px"/>`;
   return `<a href="${url}" target="_blank">📎 ${esc(m.file_name || 'فایل')}</a>`;
 }
 function mediaLabelA(t) { return { voice: '🎤 ویس', photo: '🖼 عکس', video: '🎬 ویدیو', audio: '🎵 صدا', document: '📎 فایل' }[t] || '📎'; }

@@ -108,6 +108,10 @@ async function openChat(userId) {
 
 function renderMessages(messages) {
   const box = document.getElementById('messages');
+  if (!messages.length) {
+    box.innerHTML = `<div class="empty-chat" style="flex:1">هنوز پیامی رد و بدل نشده است.<br>می‌توانید اولین پیام را ارسال کنید 👇</div>`;
+    return;
+  }
   box.innerHTML = messages.map(renderBubble).join('');
   attachBubbleTools();
   box.scrollTop = box.scrollHeight;
@@ -239,16 +243,20 @@ async function sendMedia(file, kind) {
   fd.append('file', file);
   if (kind) fd.append('kind', kind);
   if (replyTarget) fd.append('replyDbId', replyTarget);
-  toast('در حال ارسال فایل...', 'ok', 1500);
+  const labels = { voice: 'ارسال ویس', photo: 'ارسال عکس', video: 'ارسال ویدیو', audio: 'ارسال صدا' };
+  const pt = progressToast((labels[kind] || 'ارسال فایل') + '…');
   try {
-    const r = await apiForm(`/api/agent/chats/${activeUserId}/send-media`, 'POST', fd);
+    const r = await xhrUpload(`/api/agent/chats/${activeUserId}/send-media`, 'POST', fd, (p) => pt.set(p));
+    pt.done('ارسال شد ✅');
     appendMessage(r.message);
     clearReply();
-  } catch (e) { handleApiError(e); }
+  } catch (e) { pt.done(); handleApiError(e); }
 }
 function appendMessage(m) {
   msgById[m.id] = m;
   const box = document.getElementById('messages');
+  const empty = box.querySelector('.empty-chat');
+  if (empty) box.innerHTML = '';
   box.insertAdjacentHTML('beforeend', renderBubble(m));
   attachBubbleTools();
   box.scrollTop = box.scrollHeight;
@@ -346,6 +354,7 @@ function setupSocket() {
   socket = connectSocket();
   socket.on('message:new', (m) => {
     if (m.agent_id !== ME.id) return;
+    if (m.direction === 'system') return; // hide bot onboarding/system messages from the agent
     if (m.user_id === activeUserId) {
       if (!msgById[m.id]) appendMessage(m);
       if (m.direction === 'in') api(`/api/agent/chats/${activeUserId}/read`, { method: 'POST', body: '{}' }).catch(() => {});

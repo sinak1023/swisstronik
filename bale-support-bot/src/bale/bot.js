@@ -276,4 +276,4 @@ function stopPolling() {
   running = false;
 }
 
-module.exports = { startPolling, stopPolling, sendRules };
+module.exports = { startPolling, stopPolling, sendRules, handleMessage, handleCallback, acceptAndAssign };

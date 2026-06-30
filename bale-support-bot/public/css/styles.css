@@ -162,6 +162,10 @@ tr:hover td { background: #fafbff; }
 .modal .field { margin-bottom: 12px; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-start; margin-top: 16px; }
 
+.upload-bar { position: relative; height: 22px; background: #eef2fb; border-radius: 11px; overflow: hidden; margin: 4px 0 6px; }
+.upload-bar .fill { position: absolute; inset: 0 auto 0 0; right: 0; width: 0; background: linear-gradient(90deg,#2f6df6,#6a3df6); transition: width .15s; }
+.upload-bar .pct { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #1f2733; }
+
 .mobile-only { display: none; }
 .hamburger { display: none; background: #eef2fb; border: 0; border-radius: 10px; width: 40px; height: 40px; font-size: 18px; }
 

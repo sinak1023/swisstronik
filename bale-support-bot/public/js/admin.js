@@ -163,6 +163,7 @@ function agentModal(agent) {
     <div class="field"><label>عکس پروفایل</label><input id="ag-photo" type="file" accept="image/*"/></div>
     <div class="field"><label>ویس خوش‌آمدگویی (هنگام تایید قوانین برای کاربر ارسال می‌شود)</label><input id="ag-voice" type="file" accept="audio/*"/></div>
     ${agent ? `<div class="field"><label>وضعیت</label><select id="ag-active"><option value="1" ${a.active ? 'selected' : ''}>فعال</option><option value="0" ${!a.active ? 'selected' : ''}>غیرفعال</option></select></div>` : ''}
+    <div class="upload-bar hidden" id="ag-progress"><i class="fill"></i><span class="pct">0%</span></div>
     <div class="modal-actions"><button class="btn" id="ag-save">ذخیره</button>
     <button class="btn ghost" onclick="closeModal()">انصراف</button></div>`);
   document.getElementById('ag-save').addEventListener('click', async () => {
@@ -178,14 +179,18 @@ function agentModal(agent) {
     if (photo) fd.append('photo', photo);
     if (voice) fd.append('welcome_voice', voice);
     if (agent) fd.append('active', document.getElementById('ag-active').value);
+    if (!agent && !pass) { toast('رمز عبور الزامی است', 'error'); return; }
+    const saveBtn = document.getElementById('ag-save');
+    const prog = document.getElementById('ag-progress');
+    const fill = prog.querySelector('.fill');
+    const pct = prog.querySelector('.pct');
+    saveBtn.disabled = true; prog.classList.remove('hidden');
+    const onP = (p) => { fill.style.width = p + '%'; pct.textContent = p + '%'; };
     try {
-      if (agent) await apiForm(`/api/admin/agents/${agent.id}`, 'PUT', fd);
-      else {
-        if (!pass) { toast('رمز عبور الزامی است', 'error'); return; }
-        await apiForm('/api/admin/agents', 'POST', fd);
-      }
+      const url = agent ? `/api/admin/agents/${agent.id}` : '/api/admin/agents';
+      await xhrUpload(url, agent ? 'PUT' : 'POST', fd, onP);
       closeModal(); toast('ذخیره شد ✅'); loadAgents();
-    } catch (e) { handleApiError(e); }
+    } catch (e) { saveBtn.disabled = false; prog.classList.add('hidden'); handleApiError(e); }
   });
 }
 async function editAgent(id) {
@@ -281,8 +286,11 @@ document.getElementById('set-save').addEventListener('click', async () => {
   fd.append('rules_text', document.getElementById('set-rules').value);
   const v = document.getElementById('set-voice').files[0];
   if (v) fd.append('welcome_voice', v);
-  await apiForm('/api/admin/settings', 'POST', fd);
-  toast('تنظیمات ذخیره شد ✅'); loadSettings();
+  const pt = progressToast('ذخیره تنظیمات…');
+  try {
+    await xhrUpload('/api/admin/settings', 'POST', fd, (p) => pt.set(p));
+    pt.done('تنظیمات ذخیره شد ✅'); loadSettings();
+  } catch (e) { pt.done(); handleApiError(e); }
 });
 
 // ---------------- realtime ----------------

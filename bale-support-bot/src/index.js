@@ -36,6 +36,13 @@ function main() {
     bot.stopPolling();
     process.exit(0);
   });
+
+  // Never let a stray client-aborted request or background rejection crash the server
+  process.on('unhandledRejection', (e) => console.error('unhandledRejection:', e && e.message));
+  process.on('uncaughtException', (e) => {
+    if (e && (e.message === 'Request aborted' || e.code === 'ECONNRESET' || e.code === 'ECONNABORTED')) return;
+    console.error('uncaughtException:', e && e.message);
+  });
 }
 
 main();

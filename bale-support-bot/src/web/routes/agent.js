@@ -49,12 +49,13 @@ router.get('/stats/series', (req, res) => {
 router.get('/chats', (req, res) => {
   const aid = agentId(req);
   const day = todayStr();
+  // previews ignore bot/system onboarding messages — agent only cares about the real dialogue
   const rows = db
     .prepare(
       `SELECT u.id, u.first_name, u.last_name, u.username, u.last_message_at,
-              (SELECT text FROM messages m WHERE m.user_id=u.id ORDER BY m.created_at DESC LIMIT 1) last_text,
-              (SELECT type FROM messages m WHERE m.user_id=u.id ORDER BY m.created_at DESC LIMIT 1) last_type,
-              (SELECT direction FROM messages m WHERE m.user_id=u.id ORDER BY m.created_at DESC LIMIT 1) last_dir,
+              (SELECT text FROM messages m WHERE m.user_id=u.id AND m.direction IN ('in','out') ORDER BY m.created_at DESC LIMIT 1) last_text,
+              (SELECT type FROM messages m WHERE m.user_id=u.id AND m.direction IN ('in','out') ORDER BY m.created_at DESC LIMIT 1) last_type,
+              (SELECT direction FROM messages m WHERE m.user_id=u.id AND m.direction IN ('in','out') ORDER BY m.created_at DESC LIMIT 1) last_dir,
               (SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='in' AND m.read_by_agent=0) unread,
               (SELECT kind FROM satisfaction s WHERE s.user_id=u.id AND s.agent_id=u.agent_id AND s.day=?) sat_today
        FROM users u WHERE u.agent_id=? AND u.accepted_rules=1
@@ -69,8 +70,9 @@ router.get('/chats/:userId/messages', (req, res) => {
   const aid = agentId(req);
   const userId = Number(req.params.userId);
   if (!ownsUser(aid, userId)) return res.status(404).json({ error: 'not found' });
+  // agent sees only the real conversation (in/out), not bot onboarding/system messages
   const msgs = db
-    .prepare('SELECT * FROM messages WHERE user_id=? ORDER BY created_at ASC LIMIT 1000')
+    .prepare("SELECT * FROM messages WHERE user_id=? AND direction IN ('in','out') ORDER BY created_at ASC LIMIT 1000")
     .all(userId);
   // mark inbound as read
   const changed = db

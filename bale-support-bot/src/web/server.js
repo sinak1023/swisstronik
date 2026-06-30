@@ -29,6 +29,23 @@ function createServer() {
 
   app.use((req, res) => res.status(404).json({ error: 'not found' }));
 
+  // Error handler — gracefully swallow client-aborted uploads and report multer errors
+  // (e.g. a reverse proxy/timeout or the user navigating away mid-upload). These are
+  // not server faults, so we don't crash or dump stack traces.
+  app.use((err, req, res, next) => {
+    const aborted = req.aborted || err.message === 'Request aborted' || err.code === 'ECONNABORTED' || err.code === 'ECONNRESET';
+    if (aborted) {
+      try { res.end(); } catch {}
+      return;
+    }
+    if (err.name === 'MulterError') {
+      const tooBig = err.code === 'LIMIT_FILE_SIZE';
+      return res.status(400).json({ error: 'upload_error', description: tooBig ? 'حجم فایل بیش از حد مجاز است (حداکثر ۵۰ مگابایت)' : err.message });
+    }
+    console.error('Unhandled error:', err && err.message);
+    if (!res.headersSent) res.status(500).json({ error: 'server_error' });
+  });
+
   const server = http.createServer(app);
   const io = new Server(server, { cors: { origin: true } });
 

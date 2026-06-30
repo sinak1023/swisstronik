@@ -33,6 +33,43 @@ function apiGet(p) { return api(p); }
 function apiJson(p, method, body) { return api(p, { method, body: JSON.stringify(body || {}) }); }
 function apiForm(p, method, formData) { return api(p, { method, body: formData }); }
 
+// Upload via XHR so we get real upload progress (fetch can't report it)
+function xhrUpload(path, method, formData, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, path);
+    if (Auth.token) xhr.setRequestHeader('Authorization', 'Bearer ' + Auth.token);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      if (xhr.status === 401) { Auth.logout(); return reject(new Error('unauthorized')); }
+      let data = null; try { data = JSON.parse(xhr.responseText); } catch {}
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(data);
+      const err = new Error((data && (data.error || data.description)) || ('خطا ' + xhr.status));
+      err.status = xhr.status; err.data = data; reject(err);
+    };
+    xhr.onerror = () => reject(new Error('اتصال شبکه قطع شد'));
+    xhr.send(formData);
+  });
+}
+
+// An updatable progress toast: returns { set(pct), done(msg, kind) }
+function progressToast(label) {
+  const w = ensureToastWrap();
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:10px">
+    <span>${esc(label)}</span><b class="ptv">0%</b>
+    <span class="pbar" style="display:inline-block;width:90px;height:6px;background:#ffffff44;border-radius:4px;overflow:hidden">
+      <i class="pfill" style="display:block;height:100%;width:0;background:#fff"></i></span></div>`;
+  w.appendChild(el);
+  return {
+    set(p) { el.querySelector('.ptv').textContent = p + '%'; el.querySelector('.pfill').style.width = p + '%'; },
+    done(msg, kind) { el.remove(); if (msg) toast(msg, kind || 'ok'); },
+  };
+}
+
 // ---- toast / popup ----
 function ensureToastWrap() {
   let w = document.querySelector('.toast-wrap');

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>پنل مدیریت</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar-backdrop" id="backdrop"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">🛠 پنل مدیریت</div>
+      <a class="nav-item active" data-view="overview">📊 داشبورد و آمار</a>
+      <a class="nav-item" data-view="agents">🎧 پشتیبان‌ها</a>
+      <a class="nav-item" data-view="surveys">⭐ نظرسنجی</a>
+      <a class="nav-item" data-view="satisfaction">📋 رضایت/نارضایتی</a>
+      <a class="nav-item" data-view="settings">⚙️ تنظیمات بات</a>
+      <div class="nav-spacer"></div>
+      <a class="nav-item" id="logout">🚪 خروج</a>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="hamburger" id="ham">☰</button>
+          <h2 id="page-title">داشبورد و آمار</h2>
+        </div>
+        <div class="me-chip"><span id="me-name"></span> 👤</div>
+      </div>
+
+      <!-- OVERVIEW -->
+      <section id="view-overview">
+        <div class="row" style="margin-bottom:14px">
+          <select id="ov-preset" class="shrink" style="max-width:160px">
+            <option value="day">روزانه</option>
+            <option value="week">هفتگی</option>
+            <option value="month">ماهانه</option>
+          </select>
+          <input type="date" id="ov-date" class="shrink" style="max-width:180px" />
+        </div>
+        <div class="cards" id="ov-totals" style="margin-bottom:18px"></div>
+        <div class="section">
+          <h3>عملکرد پشتیبان‌ها</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>پشتیبان</th><th>سهم</th><th>کل کاربران</th><th>دریافتی</th><th>خوانده</th>
+                <th>پاسخ‌داده</th><th>در انتظار</th><th>رضایت</th><th>نارضایتی</th><th>نظرسنجی</th><th></th>
+              </tr></thead>
+              <tbody id="ov-agents"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- AGENTS -->
+      <section id="view-agents" class="hidden">
+        <div class="row" style="margin-bottom:14px">
+          <button class="btn shrink" id="add-agent">➕ افزودن پشتیبان</button>
+          <button class="btn ghost shrink" id="save-shares">💾 ذخیره درصدها</button>
+        </div>
+        <div class="section">
+          <h3>لیست پشتیبان‌ها (درصد دریافت پیام را می‌توانید ویرایش کنید)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>عکس</th><th>نام</th><th>نام کاربری</th><th>توضیحات</th><th>درصد سهم</th><th>وضعیت</th><th>عملیات</th></tr></thead>
+              <tbody id="agents-rows"></tbody>
+            </table>
+          </div>
+          <p style="color:var(--muted);font-size:12px;margin-top:10px">سهم‌ها وزن نسبی هستند؛ توزیع کاربران بر اساس نسبت سهم هر پشتیبان انجام می‌شود.</p>
+        </div>
+      </section>
+
+      <!-- SURVEYS -->
+      <section id="view-surveys" class="hidden">
+        <div class="section">
+          <h3>ارسال نظرسنجی رضایت</h3>
+          <div class="row">
+            <select id="sv-agent" class="shrink" style="max-width:220px"></select>
+            <select id="sv-period" class="shrink" style="max-width:200px">
+              <option value="1">کاربران ۱ هفته</option>
+              <option value="2">کاربران ۲ هفته</option>
+              <option value="3">کاربران ۳ هفته</option>
+              <option value="4">کاربران ۴ هفته</option>
+              <option value="5">کاربران ۴ هفته به بالا</option>
+            </select>
+            <button class="btn shrink" id="sv-send">📤 ارسال نظرسنجی</button>
+          </div>
+          <div class="field" style="margin-top:10px">
+            <label>متن سوال (اختیاری)</label>
+            <textarea id="sv-question" rows="2" placeholder="پیش‌فرض: از روند پشتیبانی چه امتیازی می‌دهید؟ (۱ تا ۵)"></textarea>
+          </div>
+        </div>
+        <div class="section">
+          <h3>نتایج نظرسنجی‌ها</h3>
+          <div class="row" style="margin-bottom:10px"><select id="sv-filter-agent" class="shrink" style="max-width:220px"></select></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>تاریخ</th><th>بازه</th><th>ارسال‌شده</th><th>تعداد رای</th><th>میانگین امتیاز</th><th>وضعیت</th><th></th></tr></thead>
+              <tbody id="sv-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SATISFACTION -->
+      <section id="view-satisfaction" class="hidden">
+        <div class="section">
+          <h3>گزارش رضایت و نارضایتی</h3>
+          <div class="row" style="margin-bottom:12px">
+            <select id="st-agent" class="shrink" style="max-width:200px"></select>
+            <select id="st-kind" class="shrink" style="max-width:160px">
+              <option value="">همه</option><option value="satisfied">راضی</option><option value="dissatisfied">ناراضی</option>
+            </select>
+            <input type="date" id="st-from" class="shrink" style="max-width:160px" />
+            <input type="date" id="st-to" class="shrink" style="max-width:160px" />
+            <input id="st-user" class="shrink" style="max-width:180px" placeholder="جستجوی کاربر" />
+            <button class="btn shrink" id="st-load">فیلتر</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>کاربر</th><th>پشتیبان</th><th>نوع</th><th>دلیل</th><th>تاریخ</th></tr></thead>
+              <tbody id="st-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="view-settings" class="hidden">
+        <div class="section">
+          <h3>تنظیمات بات</h3>
+          <div id="token-warn"></div>
+          <div class="field"><label>متن قوانین (هنگام /start برای کاربر ارسال می‌شود)</label>
+            <textarea id="set-rules" rows="8"></textarea></div>
+          <div class="field"><label>ویس خوش‌آمدگویی پیش‌فرض (در صورت نبود ویس اختصاصی پشتیبان)</label>
+            <input type="file" id="set-voice" accept="audio/*" />
+            <div id="cur-voice" style="font-size:12px;color:var(--muted);margin-top:6px"></div></div>
+          <button class="btn" id="set-save">💾 ذخیره تنظیمات</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/admin.js"></script>
+</body>
+</html>

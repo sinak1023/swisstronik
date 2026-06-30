@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>پنل پشتیبان</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="app">
+    <div class="sidebar-backdrop" id="backdrop"></div>
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">🎧 پنل پشتیبان</div>
+      <a class="nav-item active" data-view="chats">💬 گفتگوها</a>
+      <a class="nav-item" data-view="dashboard">📊 داشبورد</a>
+      <a class="nav-item" data-view="stats">📈 آمار من</a>
+      <div class="nav-spacer"></div>
+      <a class="nav-item" id="logout">🚪 خروج</a>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <button class="hamburger" id="ham">☰</button>
+          <h2 id="page-title">گفتگوها</h2>
+        </div>
+        <div class="me-chip">
+          <img class="avatar sm" id="me-avatar" />
+          <span id="me-name"></span>
+        </div>
+      </div>
+
+      <!-- CHATS -->
+      <section id="view-chats">
+        <div class="chat-layout">
+          <div class="chat-list" id="chat-list">
+            <div class="search"><input id="chat-search" placeholder="جستجوی کاربر..." /></div>
+            <div id="chat-rows"></div>
+          </div>
+          <div class="chat-main" id="chat-main">
+            <div class="empty-chat" id="empty-chat">یک گفتگو را انتخاب کنید 👈</div>
+            <div id="chat-active" class="hidden" style="display:flex;flex-direction:column;height:100%">
+              <div class="chat-header">
+                <button class="hamburger mobile-only" id="back-to-list">→</button>
+                <img class="avatar" id="peer-avatar" />
+                <div>
+                  <div class="name" id="peer-name"></div>
+                  <div style="font-size:11px;color:var(--muted)" id="peer-sub"></div>
+                </div>
+                <div class="actions">
+                  <button class="btn sm green" id="btn-sat" title="ثبت رضایت امروز">👍 رضایت</button>
+                  <button class="btn sm danger" id="btn-dissat" title="ثبت نارضایتی امروز">👎 نارضایتی</button>
+                </div>
+              </div>
+              <div class="pin-bar" id="pin-bar"></div>
+              <div class="messages" id="messages"></div>
+              <div class="reply-preview" id="reply-preview">
+                <span id="reply-text"></span>
+                <button class="btn sm ghost" id="reply-cancel">✕</button>
+              </div>
+              <div class="composer">
+                <button class="icon-btn" id="attach-btn" title="پیوست فایل">📎</button>
+                <button class="icon-btn" id="voice-btn" title="ارسال ویس">🎤</button>
+                <textarea id="composer-text" rows="1" placeholder="پیام خود را بنویسید..."></textarea>
+                <button class="btn" id="send-btn">ارسال</button>
+                <input type="file" id="file-input" class="hidden" />
+                <input type="file" id="voice-input" class="hidden" accept="audio/*" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- DASHBOARD -->
+      <section id="view-dashboard" class="hidden">
+        <div class="row" style="margin-bottom:14px">
+          <select id="dash-preset" class="shrink" style="max-width:160px">
+            <option value="day">امروز</option>
+            <option value="week">هفته اخیر</option>
+            <option value="month">ماه اخیر</option>
+          </select>
+          <input type="date" id="dash-date" class="shrink" style="max-width:180px" />
+          <div class="shrink"></div>
+        </div>
+        <div class="cards" id="dash-cards"></div>
+      </section>
+
+      <!-- STATS -->
+      <section id="view-stats" class="hidden">
+        <div class="section">
+          <h3>آمار روزانه (بازه تاریخی)</h3>
+          <div class="row" style="margin-bottom:12px">
+            <div class="shrink"><label style="font-size:12px;color:var(--muted)">از تاریخ</label><input type="date" id="stat-from"/></div>
+            <div class="shrink"><label style="font-size:12px;color:var(--muted)">تا تاریخ</label><input type="date" id="stat-to"/></div>
+            <button class="btn shrink" id="stat-load" style="align-self:flex-end">نمایش</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>تاریخ</th><th>دریافتی</th><th>خوانده‌شده</th><th>پاسخ‌داده</th><th>رضایت</th><th>نارضایتی</th></tr></thead>
+              <tbody id="stat-rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/common.js"></script>
+  <script src="/js/agent.js"></script>
+</body>
+</html>

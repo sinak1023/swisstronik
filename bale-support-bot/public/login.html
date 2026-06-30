@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>ورود | پنل پشتیبانی</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1 class="brand-title">طراحی شده توسط تیم دستیارتو</h1>
+      <p class="brand-sub">سامانه پشتیبانی هوشمند بله</p>
+      <form id="login-form">
+        <div class="field">
+          <label>نام کاربری</label>
+          <input id="username" autocomplete="username" placeholder="نام کاربری" required />
+        </div>
+        <div class="field">
+          <label>رمز عبور</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="••••••••" required />
+        </div>
+        <div class="err" id="err"></div>
+        <button class="btn" style="width:100%" type="submit" id="submit">ورود</button>
+      </form>
+    </div>
+  </div>
+  <script src="/js/common.js"></script>
+  <script>
+    // already logged in? redirect
+    if (Auth.token && Auth.user) {
+      location.href = Auth.user.role === 'admin' ? '/admin' : '/agent';
+    }
+    const form = document.getElementById('login-form');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('submit');
+      const err = document.getElementById('err');
+      err.textContent = '';
+      btn.disabled = true; btn.textContent = 'در حال ورود...';
+      try {
+        const data = await apiJson('/api/auth/login', 'POST', {
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value,
+        });
+        Auth.set(data.token, data.user);
+        location.href = data.user.role === 'admin' ? '/admin' : '/agent';
+      } catch (ex) {
+        err.textContent = ex.message || 'ورود ناموفق بود';
+      } finally {
+        btn.disabled = false; btn.textContent = 'ورود';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -423,6 +423,63 @@ $statuses = [
                         <span id="transactionsCount" class="font-bold text-green-900">0</span>
                     </div>
                 </div>
+
+                <!-- ثبت فیش دستی (کارت به کارت و ...) -->
+                <div class="mt-8 border-t border-border pt-6">
+                    <h4 class="font-semibold flex items-center gap-2 mb-4">
+                        <i class='bx bx-receipt text-primary'></i> ثبت فیش دستی (کارت به کارت)
+                    </h4>
+                    <div class="bg-muted/30 border border-border rounded-xl p-4">
+                        <form id="manualSaleForm" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm text-text mb-1">مبلغ (تومان) <span class="text-red-500">*</span></label>
+                                    <input type="text" id="ms_amount" inputmode="numeric" class="w-full px-3 py-2 border border-border rounded-lg bg-background text-text dir-ltr" placeholder="مثلاً 2500000">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-text mb-1">تاریخ (شمسی) — اختیاری</label>
+                                    <input type="text" id="ms_date" data-jdp readonly class="w-full px-3 py-2 border border-border rounded-lg bg-background text-text cursor-pointer" placeholder="پیش‌فرض: امروز">
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-text mb-1">نوع فروش</label>
+                                    <div class="flex items-center gap-4 mt-2">
+                                        <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                                            <input type="radio" name="ms_ptype" value="full" checked> فروش کامل
+                                        </label>
+                                        <label class="flex items-center gap-1.5 text-sm cursor-pointer">
+                                            <input type="radio" name="ms_ptype" value="installment"> قسطی
+                                        </label>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm text-text mb-1">دورهٔ خریداری‌شده — اختیاری</label>
+                                    <input type="text" id="ms_period" class="w-full px-3 py-2 border border-border rounded-lg bg-background text-text" placeholder="مثلاً اشتراک ۶ ماهه">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm text-text mb-1">تصویر فیش — اختیاری</label>
+                                    <input type="file" id="ms_receipt" accept="image/*" class="w-full px-3 py-2 border border-border rounded-lg bg-background text-text text-sm">
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm text-text mb-1">توضیحات — اختیاری</label>
+                                    <input type="text" id="ms_note" class="w-full px-3 py-2 border border-border rounded-lg bg-background text-text" placeholder="توضیح کوتاه">
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2">
+                                    <i class='bx bx-plus'></i> ثبت فیش
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- فیش‌های ثبت‌شده -->
+                    <div class="mt-5">
+                        <h5 class="font-medium text-text mb-3">فیش‌های ثبت‌شده</h5>
+                        <div id="manualReceiptsList" class="space-y-3">
+                            <p class="text-sm text-gray-500">در حال بارگذاری...</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -896,6 +953,7 @@ $statuses = [
         loadReminders(lead.id);
         renderCalendar();
         checkTransactions(true);
+        loadManualReceipts(lead.id);
 
         initModalTabs();
 
@@ -1782,6 +1840,88 @@ $statuses = [
                 showSnackbar(res.error || 'خطا در ثبت نوع پرداخت', 'error');
             }
         }).fail(() => showSnackbar('خطا در ارتباط با سرور', 'error'));
+    }
+
+    function renderReceiptItem(r) {
+        const typeLabel = r.payment_type === 'installment' ? 'قسطی' : 'فروش کامل';
+        const img = r.receipt_image ? `<a href="${r.receipt_image}" target="_blank" class="block mt-2"><img src="${r.receipt_image}" class="h-24 rounded-lg border border-border object-cover"></a>` : '';
+        return `
+        <div class="bg-white border border-border rounded-xl p-4 shadow-sm">
+            <div class="flex justify-between items-start">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <i class='bx bx-receipt text-green-600 text-xl'></i>
+                        <span class="font-bold text-lg">${r.amount} تومان</span>
+                        <span class="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">${typeLabel}</span>
+                    </div>
+                    <p class="text-sm text-gray-600">تاریخ: ${r.date_jalali || '-'}</p>
+                    ${r.period ? `<p class="text-sm text-gray-700 mt-1">دوره: ${escapeHtml(r.period)}</p>` : ''}
+                    ${r.note ? `<p class="text-sm text-gray-500 mt-1">${escapeHtml(r.note)}</p>` : ''}
+                    ${img}
+                </div>
+                <span class="text-xs bg-blue-100 text-blue-800 px-3 py-1 rounded-full">دستی</span>
+            </div>
+        </div>`;
+    }
+
+    function loadManualReceipts(lead_id) {
+        $('#manualReceiptsList').html('<p class="text-sm text-gray-500">در حال بارگذاری...</p>');
+        $.get('apis/get_lead_sales.php', { lead_id }, function(res) {
+            if (res.ok && res.receipts && res.receipts.length > 0) {
+                $('#manualReceiptsList').html(res.receipts.map(renderReceiptItem).join(''));
+            } else {
+                $('#manualReceiptsList').html('<p class="text-sm text-gray-500">هنوز فیشی ثبت نشده است</p>');
+            }
+        }).fail(() => $('#manualReceiptsList').html('<p class="text-sm text-red-500">خطا در بارگذاری فیش‌ها</p>'));
+    }
+
+    $(document).on('submit', '#manualSaleForm', function(e) {
+        e.preventDefault();
+        const amount = toEnglishDigits($('#ms_amount').val().trim());
+        if (!amount.replace(/\D/g, '')) {
+            showSnackbar('مبلغ را وارد کنید', 'error');
+            return;
+        }
+        const fd = new FormData();
+        fd.append('lead_id', $('#modal_lead_id').val());
+        fd.append('amount', amount);
+        fd.append('sale_date', toEnglishDigits($('#ms_date').val().trim()));
+        fd.append('payment_type', $('input[name="ms_ptype"]:checked').val());
+        fd.append('period', $('#ms_period').val().trim());
+        fd.append('note', $('#ms_note').val().trim());
+        const file = $('#ms_receipt')[0].files[0];
+        if (file) fd.append('receipt', file);
+
+        const btn = $('#manualSaleForm button[type="submit"]');
+        const orig = btn.html();
+        btn.prop('disabled', true).html('در حال ثبت...');
+
+        $.ajax({
+            url: 'apis/add_manual_sale.php',
+            type: 'POST',
+            data: fd,
+            processData: false,
+            contentType: false,
+            dataType: 'json',
+            success: function(res) {
+                if (res.ok) {
+                    showSnackbar('فیش با موفقیت ثبت شد');
+                    $('#manualSaleForm')[0].reset();
+                    const list = $('#manualReceiptsList');
+                    if (list.find('p').length) list.empty();
+                    list.prepend(renderReceiptItem(res.sale));
+                } else {
+                    showSnackbar(res.error || 'خطا در ثبت فیش', 'error');
+                }
+            },
+            error: () => showSnackbar('خطا در ارتباط با سرور', 'error'),
+            complete: () => btn.prop('disabled', false).html(orig)
+        });
+    });
+
+    // فعال‌سازی تقویم شمسی برای تاریخ فیش
+    if (window.jalaliDatepicker) {
+        try { jalaliDatepicker.startWatch({ time: false, persianDigits: true }); } catch (e) {}
     }
 
     // متغیر برای ذخیره تعداد تراکنش‌های جدید

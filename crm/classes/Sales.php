@@ -30,8 +30,8 @@ class Sales
         try {
             $this->db->execute(
                 "INSERT INTO {$this->table}
-                 (lead_id, phone, phone_norm, user_id, project_id, amount, transaction_ref, transaction_date, payment_type)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                 (lead_id, phone, phone_norm, user_id, project_id, amount, transaction_ref, transaction_date, payment_type, source, receipt_image, period, note)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     $data['lead_id'] ?? null,
                     $data['phone'] ?? null,
@@ -42,6 +42,10 @@ class Sales
                     $data['transaction_ref'] ?? null,
                     $data['transaction_date'] ?? null,
                     $data['payment_type'] ?? 'full',
+                    $data['source'] ?? 'zarinpal',
+                    $data['receipt_image'] ?? null,
+                    $data['period'] ?? null,
+                    $data['note'] ?? null,
                 ]
             );
             return $this->db->lastInsertId();
@@ -49,6 +53,15 @@ class Sales
             // در صورت رخداد همزمانی روی یکتایی transaction_ref
             return false;
         }
+    }
+
+    /** فهرست فیش‌های دستی ثبت‌شده برای یک لید */
+    public function manual_for_lead($lead_id)
+    {
+        return $this->db->fetchAll(
+            "SELECT * FROM {$this->table} WHERE lead_id = ? AND source = 'manual' ORDER BY id DESC",
+            [$lead_id]
+        );
     }
 
     public function get_by_id($id)

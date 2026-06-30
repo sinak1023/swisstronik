@@ -73,7 +73,8 @@ if ($tab === 'calls') {
     }
 } elseif ($tab === 'tasks') {
     fputcsv($out, ['کاربر', 'تسک', 'تاریخ', 'وضعیت']);
-    $rows = $db->fetchAll("SELECT u.name un, t.title, t.task_date, t.is_completed FROM user_tasks t JOIN users u ON t.user_id=u.id WHERE t.task_date BETWEEN ? AND ? ORDER BY u.name", [$from_g, $to_g]);
+    $report_user = (int)($_GET['report_user'] ?? 0);
+    $rows = $db->fetchAll("SELECT u.name un, t.title, t.task_date, t.is_completed FROM user_tasks t JOIN users u ON t.user_id=u.id WHERE t.task_date BETWEEN ? AND ? AND (? = 0 OR t.user_id = ?) ORDER BY u.name, t.task_date DESC", [$from_g, $to_g, $report_user, $report_user]);
     foreach ($rows as $r) {
         $gp = explode('-', $r['task_date']);
         $jd = $persian->gregorian_to_jalali($gp[0], $gp[1], $gp[2], '/');

@@ -56,6 +56,12 @@ if (!empty($_GET['from_date']) && !empty($_GET['to_date'])) {
         $rf = sprintf('%04d-%02d-%02d 00:00:00', $gf[0], $gf[1], $gf[2]);
         $rt = sprintf('%04d-%02d-%02d 23:59:59', $gt[0], $gt[1], $gt[2]);
         $range_result = $db->fetch("SELECT COUNT(*) c, COALESCE(SUM(amount),0) a, SUM(payment_type='full') f, SUM(payment_type='installment') i FROM sales WHERE user_id=? AND transaction_date BETWEEN ? AND ?", [$user_id, $rf, $rt]);
+        // لیست دقیق فروش‌های بازه: نام مشتری، شماره، مبلغ، نوع
+        $range_list = $db->fetchAll(
+            "SELECT s.*, l.name AS lead_name FROM sales s LEFT JOIN leads l ON s.lead_id = l.id
+             WHERE s.user_id = ? AND s.transaction_date BETWEEN ? AND ? ORDER BY s.transaction_date DESC",
+            [$user_id, $rf, $rt]
+        );
     }
 }
 
@@ -105,6 +111,35 @@ function toman($amount) { return number_format($amount / 10) . ' تومان'; }
             <div class="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-green-900">
                 مجموع بازهٔ انتخابی: <b><?= $range_result['c'] ?></b> فروش — <b><?= toman($range_result['a']) ?></b>
                 <span class="text-sm">(کامل: <?= (int)$range_result['f'] ?> | قسطی: <?= (int)$range_result['i'] ?>)</span>
+            </div>
+
+            <!-- لیست دقیق فروش‌های بازه -->
+            <div class="mt-4 overflow-x-auto border border-border rounded-xl">
+                <table class="w-full text-center text-sm">
+                    <thead class="bg-muted"><tr>
+                        <th class="px-3 py-3">مشتری</th><th class="px-3 py-3">شماره</th>
+                        <th class="px-3 py-3">مبلغ (تومان)</th><th class="px-3 py-3">نوع فروش</th>
+                        <th class="px-3 py-3">نوع ثبت</th><th class="px-3 py-3">تاریخ</th>
+                    </tr></thead>
+                    <tbody class="divide-y divide-border">
+                    <?php if (!empty($range_list)): foreach ($range_list as $sale):
+                        $sd = explode(' ', $sale['transaction_date'])[0];
+                        $sgp = explode('-', $sd);
+                        $sjd = (count($sgp) === 3) ? $persian->gregorian_to_jalali($sgp[0], $sgp[1], $sgp[2], '/') : '-';
+                    ?>
+                        <tr class="hover:bg-muted/30">
+                            <td class="px-3 py-3"><?= htmlspecialchars($sale['lead_name'] ?? 'بی‌نام') ?></td>
+                            <td class="px-3 py-3 dir-ltr"><?= htmlspecialchars($sale['phone'] ?? '-') ?></td>
+                            <td class="px-3 py-3 font-bold"><?= number_format((int)$sale['amount']) ?></td>
+                            <td class="px-3 py-3"><?= $sale['payment_type'] === 'installment' ? 'قسطی' : 'کامل' ?></td>
+                            <td class="px-3 py-3 text-xs"><?= ($sale['source'] ?? 'zarinpal') === 'manual' ? 'دستی' : 'زرین‌پال' ?></td>
+                            <td class="px-3 py-3 text-xs text-gray-500"><?= $sjd ?></td>
+                        </tr>
+                    <?php endforeach; else: ?>
+                        <tr><td colspan="6" class="py-6 text-gray-500">فروشی در این بازه نیست</td></tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
             </div>
         <?php endif; ?>
     </div>

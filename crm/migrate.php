@@ -242,6 +242,13 @@ try {
         out("  $tbl backfilled (" . count($rows) . " rows)");
     }
 
+    // ===== 13) ستون‌های فیش دستی روی جدول فروش =====
+    out("\n[13] sales manual-receipt columns");
+    add_column($pdo, $dbName, 'sales', 'source', "`source` VARCHAR(20) NOT NULL DEFAULT 'zarinpal'");
+    add_column($pdo, $dbName, 'sales', 'receipt_image', "`receipt_image` VARCHAR(255) NULL");
+    add_column($pdo, $dbName, 'sales', 'period', "`period` VARCHAR(120) NULL");
+    add_column($pdo, $dbName, 'sales', 'note', "`note` TEXT NULL");
+
     out("\n✅ Migration finished successfully.");
 } catch (Exception $e) {
     out("\n❌ Migration error: " . $e->getMessage());

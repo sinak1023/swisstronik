@@ -19,16 +19,25 @@ function jalali_to_g($persian, $val, $fallback)
     }
     return $fallback;
 }
+// برای تب «تسک کاربران» اگر تاریخی انتخاب نشده باشد، پیش‌فرض ۳۰ روز گذشته است
+// تا تسک‌های روزهای قبل هم دیده شوند.
+if (empty($_GET['from_date']) && empty($_GET['to_date']) && $tab === 'tasks') {
+    $from_g = date('Y-m-d', strtotime('-30 days'));
+}
 if (!empty($_GET['from_date'])) $from_g = jalali_to_g($persian, $_GET['from_date'], $today_g);
 if (!empty($_GET['to_date']))   $to_g   = jalali_to_g($persian, $_GET['to_date'], $today_g);
 
 $from_dt = $from_g . ' 00:00:00';
 $to_dt   = $to_g . ' 23:59:59';
 
+// فیلتر کاربر (برای تب تسک‌ها)
+$report_user = (int)($_GET['report_user'] ?? 0);
+$all_report_users = $db->fetchAll("SELECT id, name FROM users WHERE status = 1 ORDER BY name");
+
 $status_labels = ['pending' => 'در انتظار', 'success' => 'تماس موفق', 'not_answer' => 'عدم پاسخ', 'following' => 'در حال پیگیری', 'purchased' => 'خریداری', 'rejected' => 'رد شده'];
 
 function toman($a) { return number_format($a / 10); }
-$qs_dates = 'from_date=' . urlencode($_GET['from_date'] ?? '') . '&to_date=' . urlencode($_GET['to_date'] ?? '');
+$qs_dates = 'from_date=' . urlencode($_GET['from_date'] ?? '') . '&to_date=' . urlencode($_GET['to_date'] ?? '') . '&report_user=' . $report_user;
 ?>
 
 <div class="max-w-7xl mx-auto p-4 md:p-6">
@@ -41,9 +50,20 @@ $qs_dates = 'from_date=' . urlencode($_GET['from_date'] ?? '') . '&to_date=' . u
     <div class="bg-surface rounded-2xl shadow-sm border border-border p-5 mb-6">
         <form method="get" class="flex flex-col md:flex-row md:items-end gap-4">
             <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
+            <?php if ($tab === 'tasks'): ?>
+            <div class="flex-1">
+                <label class="block text-sm text-text mb-2">کاربر</label>
+                <select name="report_user" class="w-full px-4 py-2 border border-border rounded-lg bg-background text-text">
+                    <option value="0">همهٔ کاربران</option>
+                    <?php foreach ($all_report_users as $u): ?>
+                        <option value="<?= $u['id'] ?>" <?= $report_user == $u['id'] ? 'selected' : '' ?>><?= htmlspecialchars($u['name']) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <?php endif; ?>
             <div class="flex-1">
                 <label class="block text-sm text-text mb-2">از تاریخ (شمسی)</label>
-                <input type="text" name="from_date" data-jdp readonly value="<?= htmlspecialchars($_GET['from_date'] ?? '') ?>" class="w-full px-4 py-2 border border-border rounded-lg bg-background text-text cursor-pointer" placeholder="امروز">
+                <input type="text" name="from_date" data-jdp readonly value="<?= htmlspecialchars($_GET['from_date'] ?? '') ?>" class="w-full px-4 py-2 border border-border rounded-lg bg-background text-text cursor-pointer" placeholder="<?= $tab === 'tasks' ? '۳۰ روز اخیر' : 'امروز' ?>">
             </div>
             <div class="flex-1">
                 <label class="block text-sm text-text mb-2">تا تاریخ (شمسی)</label>
@@ -93,7 +113,7 @@ $qs_dates = 'from_date=' . urlencode($_GET['from_date'] ?? '') . '&to_date=' . u
 
         <?php elseif ($tab === 'tasks'): ?>
             <?php
-            $rows = $db->fetchAll("SELECT t.*, u.name as user_name FROM user_tasks t LEFT JOIN users u ON t.user_id=u.id WHERE t.task_date BETWEEN ? AND ? ORDER BY u.name, t.task_date DESC, t.position", [$from_g, $to_g]);
+            $rows = $db->fetchAll("SELECT t.*, u.name as user_name FROM user_tasks t LEFT JOIN users u ON t.user_id=u.id WHERE t.task_date BETWEEN ? AND ? AND (? = 0 OR t.user_id = ?) ORDER BY u.name, t.task_date DESC, t.position", [$from_g, $to_g, $report_user, $report_user]);
             ?>
             <table class="w-full text-center">
                 <thead class="bg-muted"><tr>

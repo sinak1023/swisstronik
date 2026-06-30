@@ -124,7 +124,7 @@ function renderBubble(m) {
   let quote = '';
   if (m.reply_to_message_id && msgById[m.reply_to_message_id]) {
     const o = msgById[m.reply_to_message_id];
-    quote = `<div class="reply-quote">${o.type === 'text' ? esc((o.text || '').slice(0, 80)) : mediaLabel(o.type)}</div>`;
+    quote = `<div class="reply-quote" data-jump="${o.id}" title="رفتن به پیام">${o.type === 'text' ? esc((o.text || '').slice(0, 80)) : mediaLabel(o.type)}</div>`;
   }
   const pin = m.pinned ? '<span class="pinned-flag">📌</span>' : '';
   const tools = m.direction !== 'system'
@@ -152,6 +152,10 @@ function attachBubbleTools() {
       if (b.dataset.act === 'reply') setReply(id);
       else togglePin(id);
     });
+  });
+  document.querySelectorAll('.reply-quote[data-jump]').forEach((q) => {
+    q.style.cursor = 'pointer';
+    q.addEventListener('click', () => jumpToMessage(q.dataset.jump));
   });
 }
 
@@ -189,13 +193,23 @@ async function loadPins() {
     const bar = document.getElementById('pin-bar');
     if (!r.pins.length) { bar.classList.remove('show'); bar.innerHTML = ''; return; }
     bar.classList.add('show');
-    bar.innerHTML = '<b>📌 پیام‌های پین‌شده:</b>' + r.pins.map((p) =>
-      `<div class="pin-item" data-id="${p.id}">${p.type === 'text' ? esc((p.text || '').slice(0, 70)) : mediaLabel(p.type)}</div>`).join('');
-    bar.querySelectorAll('.pin-item').forEach((el) => el.addEventListener('click', () => {
-      const t = document.getElementById('msg-' + el.dataset.id);
-      if (t) t.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }));
+    bar.innerHTML = `<b style="display:block;margin-bottom:4px">📌 پیام‌های پین‌شده (${r.pins.length})</b>` +
+      r.pins.map((p) => {
+        const preview = p.type === 'text' ? esc((p.text || '').replace(/\n/g, ' ')) : mediaLabel(p.type);
+        return `<div class="pin-item" data-id="${p.id}" title="برای رفتن به پیام کلیک کنید">📌 ${preview}</div>`;
+      }).join('');
+    bar.querySelectorAll('.pin-item').forEach((el) => el.addEventListener('click', () => jumpToMessage(el.dataset.id)));
   } catch (e) { /* */ }
+}
+
+function jumpToMessage(id) {
+  const t = document.getElementById('msg-' + id);
+  if (!t) return;
+  t.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  t.classList.remove('flash');
+  void t.offsetWidth; // restart the animation
+  t.classList.add('flash');
+  setTimeout(() => t.classList.remove('flash'), 1700);
 }
 
 // ---------- composer ----------
@@ -339,14 +353,38 @@ function satModal(kind) {
       const c = chats.find((x) => x.id === activeUserId);
       if (c) { c.sat_today = kind; renderChatList(); }
       toast('ثبت شد ✅', 'ok', 1500);
-    } catch (e) { handleApiError(e); }
+    } catch (e) {
+      if (e.status === 409 && e.data && e.data.kind) {
+        closeModal();
+        updateSatButtons({ kind: e.data.kind });
+        const c = chats.find((x) => x.id === activeUserId);
+        if (c) { c.sat_today = e.data.kind; renderChatList(); }
+        toast('برای این کاربر امروز قبلاً ثبت شده است', 'warn');
+      } else handleApiError(e);
+    }
   });
 }
 function updateSatButtons(sat) {
   const s = document.getElementById('btn-sat');
   const d = document.getElementById('btn-dissat');
-  s.style.outline = sat && sat.kind === 'satisfied' ? '3px solid #0a7' : '';
-  d.style.outline = sat && sat.kind === 'dissatisfied' ? '3px solid #b22' : '';
+  const recorded = sat && sat.kind;
+  if (recorded) {
+    // locked for today — only one rating per user per day
+    s.disabled = true; d.disabled = true;
+    s.title = d.title = 'برای امروز ثبت شده است (هر روز یک‌بار)';
+    s.style.opacity = sat.kind === 'satisfied' ? '1' : '.4';
+    d.style.opacity = sat.kind === 'dissatisfied' ? '1' : '.4';
+    s.style.outline = sat.kind === 'satisfied' ? '3px solid #0a7' : '';
+    d.style.outline = sat.kind === 'dissatisfied' ? '3px solid #b22' : '';
+    s.textContent = sat.kind === 'satisfied' ? '👍 ثبت شد ✓' : '👍 رضایت';
+    d.textContent = sat.kind === 'dissatisfied' ? '👎 ثبت شد ✓' : '👎 نارضایتی';
+  } else {
+    s.disabled = false; d.disabled = false;
+    s.title = 'ثبت رضایت امروز'; d.title = 'ثبت نارضایتی امروز';
+    s.style.opacity = d.style.opacity = '1';
+    s.style.outline = d.style.outline = '';
+    s.textContent = '👍 رضایت'; d.textContent = '👎 نارضایتی';
+  }
 }
 
 // ---------- realtime ----------

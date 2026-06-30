@@ -159,10 +159,13 @@ router.post('/chats/:userId/satisfaction', (req, res) => {
   const kind = req.body.kind;
   if (!['satisfied', 'dissatisfied'].includes(kind)) return res.status(400).json({ error: 'kind invalid' });
   const day = todayStr();
+  // only one rating per user per day — reject if already recorded today
+  const existing = db.prepare('SELECT kind FROM satisfaction WHERE user_id=? AND agent_id=? AND day=?').get(userId, aid, day);
+  if (existing) {
+    return res.status(409).json({ error: 'already_recorded', kind: existing.kind, description: 'برای این کاربر امروز قبلاً ثبت شده است' });
+  }
   db.prepare(
-    `INSERT INTO satisfaction (user_id, agent_id, kind, reason, day, created_at)
-     VALUES (?,?,?,?,?,?)
-     ON CONFLICT(user_id,agent_id,day) DO UPDATE SET kind=excluded.kind, reason=excluded.reason, created_at=excluded.created_at`
+    `INSERT INTO satisfaction (user_id, agent_id, kind, reason, day, created_at) VALUES (?,?,?,?,?,?)`
   ).run(userId, aid, kind, (req.body.reason || '').toString(), day, Date.now());
   rt.toAdmin('satisfaction:update', { user_id: userId, agent_id: aid, kind, day });
   res.json({ ok: true, kind });

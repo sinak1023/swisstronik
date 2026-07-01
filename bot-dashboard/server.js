@@ -40,6 +40,21 @@ app.use(sessionMiddleware);
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
+// Wraps multer so oversized/malformed uploads return a clean JSON error instead of
+// falling through to Express's default HTML error page.
+function uploadSingle(field) {
+  const middleware = upload.single(field);
+  return (req, res, next) => {
+    middleware(req, res, (err) => {
+      if (!err) return next();
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ ok: false, error: 'حجم فایل بیش از حد مجاز (۵۰ مگابایت) است' });
+      }
+      return res.status(400).json({ ok: false, error: 'خطا در آپلود فایل: ' + err.message });
+    });
+  };
+}
+
 // ---------- Auth ----------
 
 app.get('/login', (req, res) => {
@@ -97,7 +112,7 @@ app.post('/api/bot/disconnect', requireAuth, (req, res) => {
 
 const PREVIEW_LIMIT = 2000;
 
-app.post('/api/upload/csv', requireAuth, requireBot, upload.single('file'), (req, res) => {
+app.post('/api/upload/csv', requireAuth, requireBot, uploadSingle('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, error: 'فایلی ارسال نشده است' });
   try {
     const { columns, rows } = parseCsv(req.file.buffer);
@@ -120,7 +135,7 @@ app.post('/api/upload/csv', requireAuth, requireBot, upload.single('file'), (req
 
 // ---------- Attachment upload (photo / document sent alongside the message) ----------
 
-app.post('/api/upload/attachment', requireAuth, requireBot, upload.single('file'), (req, res) => {
+app.post('/api/upload/attachment', requireAuth, requireBot, uploadSingle('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, error: 'فایلی ارسال نشده است' });
   const kind = req.file.mimetype.startsWith('image/') ? 'photo' : 'document';
   const attachmentId = put(attachments, {
@@ -249,6 +264,45 @@ io.on('connection', (socket) => {
     socket.join(`broadcast:${broadcastId}`);
   });
 });
+
+// ---------- Fallback error handling ----------
+
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ ok: false, error: 'یافت نشد' });
+  res.status(404).send('یافت نشد');
+});
+
+// Any error thrown/passed to next() by a route above lands here instead of
+// crashing the process or leaking Express's default HTML/stack-trace page.
+app.use((err, req, res, next) => {
+  console.error('Unhandled request error:', err);
+  if (res.headersSent) return next(err);
+  if (req.path.startsWith('/api/')) return res.status(500).json({ ok: false, error: 'خطای داخلی سرور' });
+  res.status(500).send('خطای داخلی سرور');
+});
+
+// Safety net: a bug in some rarely-hit code path shouldn't be able to take the
+// whole dashboard down while a broadcast to hundreds/thousands of users is running.
+// Per-recipient failures (bot blocked/stopped by a user, network hiccup, etc.) are
+// already caught inside runBroadcast and simply logged as "failed" - this is only
+// for truly unexpected errors elsewhere in the process.
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception, shutting down for a clean restart:', err);
+  process.exit(1);
+});
+
+function shutdown(signal) {
+  console.log(`Received ${signal}, shutting down...`);
+  server.close(() => process.exit(0));
+  // Force-exit if connections don't close in time.
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 server.listen(config.port, () => {
   console.log(`Bale bot dashboard listening on http://localhost:${config.port}`);

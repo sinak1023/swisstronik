@@ -1,0 +1,25 @@
+[Unit]
+Description=Bale Bot Management Dashboard
+After=network.target
+
+[Service]
+Type=simple
+# Change this to the actual path where you extracted/deployed the app
+WorkingDirectory=/opt/bale-bot-dashboard
+ExecStart=/usr/bin/node server.js
+# Change this to the linux user that should own/run the process (avoid running as root)
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+
+# .env in WorkingDirectory is loaded automatically by the app (dotenv),
+# no need to duplicate the variables here.
+
+# Basic hardening (safe to remove if it causes issues on your distro)
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

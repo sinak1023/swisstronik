@@ -8,6 +8,11 @@ fs.mkdirSync(config.dataDir, { recursive: true });
 const db = new Database(path.join(config.dataDir, 'app.db'));
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+// performance tuning (safe with WAL) — matters at 1–2k users / lots of messages
+db.pragma('synchronous = NORMAL');
+db.pragma('temp_store = MEMORY');
+db.pragma('cache_size = -16000'); // ~16MB page cache
+db.pragma('busy_timeout = 5000');
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS admins (
@@ -108,6 +113,26 @@ CREATE TABLE IF NOT EXISTS settings (
   key TEXT PRIMARY KEY,
   value TEXT
 );
+`);
+
+// ---- lightweight migrations ----
+function ensureColumn(table, col, ddl) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`);
+}
+// delivery status for outgoing messages: 'sent' | 'pending' | 'failed'
+ensureColumn('messages', 'status', "status TEXT NOT NULL DEFAULT 'sent'");
+
+// ---- indexes for scale (1–2k users, many messages) ----
+db.exec(`
+CREATE INDEX IF NOT EXISTS idx_users_agent ON users(agent_id);
+CREATE INDEX IF NOT EXISTS idx_users_agent_accepted ON users(agent_id, accepted_rules);
+CREATE INDEX IF NOT EXISTS idx_users_lastmsg ON users(last_message_at);
+CREATE INDEX IF NOT EXISTS idx_messages_user_dir ON messages(user_id, direction);
+CREATE INDEX IF NOT EXISTS idx_messages_user_unread ON messages(user_id, direction, read_by_agent);
+CREATE INDEX IF NOT EXISTS idx_sat_agent_day ON satisfaction(agent_id, day);
+CREATE INDEX IF NOT EXISTS idx_sat_user ON satisfaction(user_id);
+CREATE INDEX IF NOT EXISTS idx_survey_resp ON survey_responses(survey_id);
 `);
 
 module.exports = db;

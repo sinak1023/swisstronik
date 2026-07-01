@@ -49,16 +49,14 @@ function switchView(view) {
 }
 
 // ---------- chats ----------
-async function loadChats() {
-  const r = await apiGet('/api/agent/chats');
+async function loadChats(q) {
+  const r = await apiGet('/api/agent/chats' + (q ? '?q=' + encodeURIComponent(q) : ''));
   chats = r.chats;
   renderChatList();
 }
 function renderChatList() {
-  const q = (document.getElementById('chat-search').value || '').trim();
   const box = document.getElementById('chat-rows');
-  const filtered = chats.filter((c) => !q || userName(c).includes(q) || String(c.id).includes(q));
-  box.innerHTML = filtered.map((c) => {
+  box.innerHTML = chats.map((c) => {
     const label = c.sat_today === 'satisfied' ? '<span class="badge green">راضی</span>'
       : c.sat_today === 'dissatisfied' ? '<span class="badge red">ناراضی</span>' : '';
     const preview = c.last_type && c.last_type !== 'text' ? mediaLabel(c.last_type) : esc(c.last_text || '');
@@ -74,7 +72,12 @@ function renderChatList() {
   box.querySelectorAll('.chat-row').forEach((el) =>
     el.addEventListener('click', () => openChat(Number(el.dataset.id))));
 }
-document.getElementById('chat-search').addEventListener('input', renderChatList);
+let _chatSearchT;
+document.getElementById('chat-search').addEventListener('input', (e) => {
+  clearTimeout(_chatSearchT);
+  const q = e.target.value.trim();
+  _chatSearchT = setTimeout(() => loadChats(q), 300);
+});
 
 function avatarPlaceholder() { return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23dde4f0"/></svg>'); }
 function mediaLabel(type) {
@@ -127,18 +130,29 @@ function renderBubble(m) {
     quote = `<div class="reply-quote" data-jump="${o.id}" title="رفتن به پیام">${o.type === 'text' ? esc((o.text || '').slice(0, 80)) : mediaLabel(o.type)}</div>`;
   }
   const pin = m.pinned ? '<span class="pinned-flag">📌</span>' : '';
-  const tools = m.direction !== 'system'
+  // delivery status icon (Telegram-style) for outgoing messages
+  let statusIcon = '';
+  if (m.direction === 'out') {
+    if (m.status === 'pending') statusIcon = ' <span class="msg-status" title="در حال ارسال">🕓</span>';
+    else if (m.status === 'failed') statusIcon = ` <span class="msg-status fail" data-retry="${m.id}" title="ارسال نشد — کلیک برای تلاش مجدد">⚠️</span>`;
+    else statusIcon = ' <span class="msg-status" title="ارسال شد">✓</span>';
+  }
+  // reply/pin tools only for real, delivered messages (not temp/pending)
+  const isTmp = String(m.id).startsWith('tmp');
+  const canTools = m.direction !== 'system' && !isTmp && m.status !== 'pending' && m.status !== 'failed';
+  const tools = canTools
     ? `<div class="tools">
          <button data-act="reply" data-id="${m.id}">پاسخ</button>
          <button data-act="pin" data-id="${m.id}">${m.pinned ? 'برداشتن پین' : 'پین'}</button>
        </div>` : '';
   return `<div class="msg ${cls}" id="msg-${m.id}">${tools}${quote}${body}
-    <div class="time">${pin} ${fmtTime(m.created_at)}</div></div>`;
+    <div class="time">${pin} ${fmtTime(m.created_at)}${statusIcon}</div></div>`;
 }
 function renderMedia(m) {
   const cap = m.text ? `<div style="margin-top:5px">${esc(m.text).replace(/\n/g, '<br>')}</div>` : '';
-  if (!m.file_id) return mediaLabel(m.type) + ' (در دسترس نیست)' + cap;
-  const url = mediaUrl(m.file_id);
+  // prefer the local preview (optimistic send) then the Bale file
+  const url = m._localUrl || (m.file_id ? mediaUrl(m.file_id) : '');
+  if (!url) return mediaLabel(m.type) + (m.status === 'pending' ? ' (در حال ارسال…)' : ' (در دسترس نیست)') + cap;
   if (m.type === 'photo') return `<a href="${url}" target="_blank"><img class="media" src="${url}"/></a>${cap}`;
   if (m.type === 'video') return `<video class="media" controls src="${url}"></video>${cap}`;
   if (m.type === 'voice' || m.type === 'audio') return `<audio controls src="${url}"></audio>${cap}`;
@@ -156,6 +170,10 @@ function attachBubbleTools() {
   document.querySelectorAll('.reply-quote[data-jump]').forEach((q) => {
     q.style.cursor = 'pointer';
     q.addEventListener('click', () => jumpToMessage(q.dataset.jump));
+  });
+  document.querySelectorAll('.msg-status.fail[data-retry]').forEach((s) => {
+    s.style.cursor = 'pointer';
+    s.addEventListener('click', () => retryMessage(s.dataset.retry));
   });
 }
 
@@ -238,33 +256,98 @@ function setupComposer() {
     document.getElementById('chat-main').classList.add('hide-mobile');
   });
 }
+// ----- optimistic sending (Telegram-style: instant bubble + clock, delivers in background) -----
+let tmpSeq = 0;
+function optimisticBubble(m) {
+  const id = 'tmp' + (++tmpSeq);
+  const msg = {
+    id, direction: 'out', status: 'pending', created_at: Date.now(),
+    type: m.type || 'text', text: m.text || '', file_id: '', file_name: m.file_name || '',
+    mime: m.mime || '', reply_to_message_id: m.reply_to_message_id || null, _localUrl: m._localUrl || '',
+  };
+  const forUser = activeUserId;
+  appendMessage(msg);
+  return { id, forUser };
+}
+function reconcile(tmp, real) {
+  const t = msgById[tmp.id];
+  real._localUrl = t ? t._localUrl : '';
+  delete msgById[tmp.id];
+  const el = document.getElementById('msg-' + tmp.id);
+  // if the same chat is still open, swap the temp bubble for the real one
+  if (tmp.forUser === activeUserId && el && !msgById[real.id]) {
+    msgById[real.id] = real;
+    el.outerHTML = renderBubble(real);
+    attachBubbleTools();
+  } else if (el) {
+    el.remove();
+  }
+}
+function failOptimistic(tmp, e) {
+  const m = msgById[tmp.id];
+  if (m) {
+    m.status = 'failed';
+    const el = document.getElementById('msg-' + tmp.id);
+    if (el) { el.outerHTML = renderBubble(m); attachBubbleTools(); }
+  }
+  handleApiError(e);
+}
+
+function guessKind(file) {
+  const t = file.type || '';
+  if (t.startsWith('image/')) return 'photo';
+  if (t.startsWith('video/')) return 'video';
+  if (t === 'audio/ogg') return 'voice';
+  if (t.startsWith('audio/')) return 'audio';
+  return 'document';
+}
+
 async function sendText() {
   const ta = document.getElementById('composer-text');
   const text = ta.value.trim();
   if (!text || !activeUserId) return;
-  const btn = document.getElementById('send-btn');
-  btn.disabled = true;
+  ta.value = ''; ta.style.height = 'auto';
+  const reply = replyTarget; clearReply();
+  sendTextValue(text, reply);
+}
+async function sendTextValue(text, reply) {
+  const tmp = optimisticBubble({ type: 'text', text, reply_to_message_id: reply });
   try {
-    const r = await apiJson(`/api/agent/chats/${activeUserId}/send`, 'POST', { text, replyDbId: replyTarget });
-    appendMessage(r.message);
-    ta.value = ''; ta.style.height = 'auto'; clearReply();
-  } catch (e) { handleApiError(e); }
-  finally { btn.disabled = false; }
+    const r = await apiJson(`/api/agent/chats/${tmp.forUser}/send`, 'POST', { text, replyDbId: reply });
+    reconcile(tmp, r.message);
+  } catch (e) { failOptimistic(tmp, e); }
 }
 async function sendMedia(file, kind) {
   if (!file || !activeUserId) return;
+  kind = kind || guessKind(file);
+  const localUrl = URL.createObjectURL(file);
+  const reply = replyTarget; clearReply();
+  const tmp = optimisticBubble({ type: kind, _localUrl: localUrl, file_name: file.name, mime: file.type });
   const fd = new FormData();
   fd.append('file', file);
-  if (kind) fd.append('kind', kind);
-  if (replyTarget) fd.append('replyDbId', replyTarget);
+  fd.append('kind', kind);
+  if (reply) fd.append('replyDbId', reply);
   const labels = { voice: 'ارسال ویس', photo: 'ارسال عکس', video: 'ارسال ویدیو', audio: 'ارسال صدا' };
   const pt = progressToast((labels[kind] || 'ارسال فایل') + '…');
   try {
-    const r = await xhrUpload(`/api/agent/chats/${activeUserId}/send-media`, 'POST', fd, (p) => pt.set(p));
-    pt.done('ارسال شد ✅');
-    appendMessage(r.message);
-    clearReply();
-  } catch (e) { pt.done(); handleApiError(e); }
+    const r = await xhrUpload(`/api/agent/chats/${tmp.forUser}/send-media`, 'POST', fd, (p) => pt.set(p));
+    pt.done();
+    reconcile(tmp, r.message);
+  } catch (e) { pt.done(); failOptimistic(tmp, e); }
+}
+async function retryMessage(id) {
+  const m = msgById[id];
+  if (!m || m.direction !== 'out') return;
+  const el = document.getElementById('msg-' + id); if (el) el.remove();
+  delete msgById[id];
+  if (m.type === 'text') return sendTextValue(m.text, m.reply_to_message_id);
+  if (m._localUrl) {
+    try {
+      const blob = await (await fetch(m._localUrl)).blob();
+      return sendMedia(new File([blob], m.file_name || 'file', { type: m.mime || blob.type }), m.type);
+    } catch { /* fallthrough */ }
+  }
+  toast('لطفاً فایل را دوباره انتخاب و ارسال کنید', 'warn');
 }
 function appendMessage(m) {
   msgById[m.id] = m;
@@ -404,6 +487,20 @@ function setupSocket() {
       chats.sort((a, b) => (b.last_message_at || 0) - (a.last_message_at || 0));
       renderChatList();
       toast('پیام جدید از ' + userName(c), 'ok', 2000);
+    }
+  });
+  // delivery status updates for our outgoing messages (clock -> check / failed)
+  socket.on('message:status', (s) => {
+    const m = msgById[s.id];
+    if (!m) return;
+    m.status = s.status;
+    if (s.bale_message_id) m.bale_message_id = s.bale_message_id;
+    if (s.file_id) { m.file_id = s.file_id; }
+    const el = document.getElementById('msg-' + s.id);
+    if (el) { el.outerHTML = renderBubble(m); attachBubbleTools(); }
+    if (s.status === 'failed') {
+      if (s.retry_after) toast(`⛔ محدودیت ارسال بله — پیام ارسال نشد. حدود ${s.retry_after} ثانیه دیگر روی ⚠️ بزنید تا دوباره تلاش شود.`, 'warn', 7000);
+      else toast('پیام ارسال نشد: ' + (s.description || 'خطای بله') + ' — روی ⚠️ بزنید تا دوباره تلاش شود.', 'error', 6000);
     }
   });
   socket.on('user:assigned', () => loadChats());

@@ -71,23 +71,40 @@ async function loadOverview() {
 }
 function avatarPh() { return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect width="30" height="30" fill="%23dde4f0"/></svg>'); }
 
+let _auAgentId = null;
 async function viewAgentUsers(agentId, name) {
-  const r = await apiGet(`/api/admin/agents/${agentId}/users`);
-  const rows = r.users.map((u) => {
-    const label = u.sat_today === 'satisfied' ? '<span class="badge green">راضی</span>'
-      : u.sat_today === 'dissatisfied' ? '<span class="badge red">ناراضی</span>' : '';
-    return `<tr>
-      <td>${esc(userName(u))} ${label}</td>
-      <td>${u.total_in}</td><td>${u.total_out}</td>
-      <td>${u.unread ? `<span class="badge blue">${u.unread}</span>` : '0'}</td>
-      <td><button class="btn sm ghost" onclick="readChat(${u.id})">خواندن چت</button>
-          <button class="btn sm ghost" onclick="reassignUser(${u.id})">انتقال</button></td>
-    </tr>`;
-  }).join('') || '<tr><td colspan="5" class="center-load">کاربری ندارد</td></tr>';
-  openModal(`<h3>کاربران ${esc(name)} (${r.users.length})</h3>
-    <div class="table-wrap"><table><thead><tr><th>کاربر</th><th>دریافتی</th><th>پاسخ</th><th>نخوانده</th><th>عملیات</th></tr></thead>
-    <tbody>${rows}</tbody></table></div>
+  _auAgentId = agentId;
+  openModal(`<h3>کاربران ${esc(name)}</h3>
+    <div class="field"><input id="au-search" placeholder="🔍 جستجوی کاربر (نام / یوزرنیم / آیدی)..." autocomplete="off" /></div>
+    <div id="au-count" style="font-size:12px;color:var(--muted);margin-bottom:6px">در حال بارگذاری…</div>
+    <div class="table-wrap" style="max-height:52vh;overflow:auto"><table>
+      <thead><tr><th>کاربر</th><th>دریافتی</th><th>پاسخ</th><th>نخوانده</th><th>عملیات</th></tr></thead>
+      <tbody id="au-rows"></tbody></table></div>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">بستن</button></div>`);
+  const input = document.getElementById('au-search');
+  let t;
+  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => loadAgentUsers(input.value), 300); });
+  loadAgentUsers('');
+}
+async function loadAgentUsers(q) {
+  const rowsEl = document.getElementById('au-rows');
+  if (!rowsEl) return;
+  try {
+    const r = await apiGet(`/api/admin/agents/${_auAgentId}/users?q=${encodeURIComponent(q || '')}&limit=200`);
+    const cnt = document.getElementById('au-count');
+    if (cnt) cnt.textContent = `نمایش ${r.shown} از ${r.total} کاربر` + (r.shown < r.total ? ' — برای یافتن بقیه جستجو کنید' : '');
+    rowsEl.innerHTML = r.users.map((u) => {
+      const label = u.sat_today === 'satisfied' ? '<span class="badge green">راضی</span>'
+        : u.sat_today === 'dissatisfied' ? '<span class="badge red">ناراضی</span>' : '';
+      return `<tr>
+        <td>${esc(userName(u))} ${label}</td>
+        <td>${u.total_in}</td><td>${u.total_out}</td>
+        <td>${u.unread ? `<span class="badge blue">${u.unread}</span>` : '0'}</td>
+        <td><button class="btn sm ghost" onclick="readChat(${u.id})">خواندن چت</button>
+            <button class="btn sm ghost" onclick="reassignUser(${u.id})">انتقال</button></td>
+      </tr>`;
+    }).join('') || '<tr><td colspan="5" class="center-load">کاربری یافت نشد</td></tr>';
+  } catch (e) { rowsEl.innerHTML = '<tr><td colspan="5" class="center-load">خطا در بارگذاری</td></tr>'; }
 }
 
 async function readChat(userId) {

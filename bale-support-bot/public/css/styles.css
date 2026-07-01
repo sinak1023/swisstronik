@@ -141,6 +141,8 @@ tr:hover td { background: #fafbff; }
 .msg video.media { max-width: 260px; border-radius: 10px; display: block; }
 .msg .file-chip { display: flex; align-items: center; gap: 6px; }
 .pinned-flag { color: var(--amber); font-size: 11px; }
+.msg-status { font-size: 11px; margin-right: 2px; }
+.msg-status.fail { cursor: pointer; }
 
 .composer { border-top: 1px solid var(--line); padding: 10px; display: flex; gap: 8px; align-items: flex-end; background: var(--panel); }
 .composer textarea { resize: none; max-height: 120px; min-height: 42px; }

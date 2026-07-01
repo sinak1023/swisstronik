@@ -4,7 +4,6 @@ const multer = require('multer');
 const db = require('../../db');
 const { requireAuth } = require('../auth');
 const messaging = require('../../bale/messaging');
-const { BaleError } = require('../../bale/api');
 const stats = require('../../services/stats');
 const rt = require('../../realtime');
 const { todayStr } = require('../../util');
@@ -45,10 +44,19 @@ router.get('/stats/series', (req, res) => {
   res.json({ series: stats.agentDailySeries(agentId(req), from, to) });
 });
 
-// chat list (telegram-like)
+// chat list (telegram-like) — supports ?q= search and ?limit= for scale
 router.get('/chats', (req, res) => {
   const aid = agentId(req);
   const day = todayStr();
+  const q = (req.query.q || '').toString().trim();
+  const limit = Math.min(Number(req.query.limit) || 300, 500);
+  const params = [aid];
+  let where = 'u.agent_id=? AND u.accepted_rules=1';
+  if (q) {
+    where += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.username LIKE ? OR CAST(u.id AS TEXT) LIKE ?)';
+    const like = `%${q}%`;
+    params.push(like, like, like, like);
+  }
   // previews ignore bot/system onboarding messages — agent only cares about the real dialogue
   const rows = db
     .prepare(
@@ -58,10 +66,10 @@ router.get('/chats', (req, res) => {
               (SELECT direction FROM messages m WHERE m.user_id=u.id AND m.direction IN ('in','out') ORDER BY m.created_at DESC LIMIT 1) last_dir,
               (SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='in' AND m.read_by_agent=0) unread,
               (SELECT kind FROM satisfaction s WHERE s.user_id=u.id AND s.agent_id=u.agent_id AND s.day=?) sat_today
-       FROM users u WHERE u.agent_id=? AND u.accepted_rules=1
-       ORDER BY COALESCE(u.last_message_at, u.created_at) DESC`
+       FROM users u WHERE ${where}
+       ORDER BY COALESCE(u.last_message_at, u.created_at) DESC LIMIT ?`
     )
-    .all(day, aid);
+    .all(day, ...params, limit);
   res.json({ chats: rows });
 });
 
@@ -121,34 +129,26 @@ router.post('/chats/:userId/send', async (req, res) => {
   const text = (req.body.text || '').toString();
   if (!text.trim()) return res.status(400).json({ error: 'متن خالی است' });
   const { replyToBaleId, replyDbId } = resolveReply(req.body.replyDbId, userId);
-  try {
-    const msg = await messaging.sendText(userId, text, { agentId: aid, replyToBaleId, replyDbId });
-    res.json({ ok: true, message: msg });
-  } catch (e) {
-    handleSendError(e, res);
-  }
+  // record instantly as 'pending' and respond right away; deliver to Bale in the
+  // background so a slow Bale API never blocks the agent (Telegram-style clock -> check).
+  const msg = messaging.recordPendingText(userId, aid, text, replyDbId);
+  res.json({ ok: true, message: msg });
+  messaging.deliverText(msg, userId, text, { replyToBaleId });
 });
 
-// send media (voice/photo/video/document/audio)
-router.post('/chats/:userId/send-media', upload.single('file'), async (req, res) => {
+// send media (voice/photo/video/document/audio) — same instant/pending pattern
+router.post('/chats/:userId/send-media', upload.single('file'), (req, res) => {
   const aid = agentId(req);
   const userId = Number(req.params.userId);
   if (!ownsUser(aid, userId)) return res.status(404).json({ error: 'not found' });
   if (!req.file) return res.status(400).json({ error: 'فایلی ارسال نشد' });
   const kind = pickKind(req.body.kind, req.file.mimetype);
+  const caption = req.body.caption || '';
   const { replyToBaleId, replyDbId } = resolveReply(req.body.replyDbId, userId);
   const file = { buffer: req.file.buffer, name: req.file.originalname, mime: req.file.mimetype };
-  try {
-    const msg = await messaging.sendMedia(userId, kind, file, {
-      agentId: aid,
-      caption: req.body.caption || '',
-      replyToBaleId,
-      replyDbId,
-    });
-    res.json({ ok: true, message: msg });
-  } catch (e) {
-    handleSendError(e, res);
-  }
+  const msg = messaging.recordPendingMedia(userId, aid, kind, file, caption, replyDbId);
+  res.json({ ok: true, message: msg });
+  messaging.deliverMedia(msg, userId, kind, file, { caption, replyToBaleId });
 });
 
 // daily satisfaction / dissatisfaction mark (one per user per day)
@@ -187,17 +187,6 @@ function pickKind(provided, mime) {
   if (mime === 'audio/ogg') return 'voice';
   if (mime.startsWith('audio/')) return 'audio';
   return 'document';
-}
-
-function handleSendError(e, res) {
-  if (e instanceof BaleError && e.retryAfter) {
-    return res.status(429).json({ error: 'rate_limited', retry_after: e.retryAfter, description: e.message });
-  }
-  if (e instanceof BaleError) {
-    return res.status(502).json({ error: 'bale_error', description: e.message });
-  }
-  console.error('send error:', e);
-  res.status(500).json({ error: 'server_error', description: e.message });
 }
 
 module.exports = router;

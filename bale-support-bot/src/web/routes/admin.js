@@ -132,9 +132,20 @@ router.post('/agents/shares', (req, res) => {
 });
 
 // users assigned to an agent (with per-user today stats + satisfaction label)
+// supports ?q= search and ?limit= for large agent caseloads
 router.get('/agents/:id/users', (req, res) => {
   const id = Number(req.params.id);
   const day = todayStr();
+  const q = (req.query.q || '').toString().trim();
+  const limit = Math.min(Number(req.query.limit) || 100, 500);
+  const params = [id];
+  let where = 'u.agent_id=?';
+  if (q) {
+    where += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.username LIKE ? OR CAST(u.id AS TEXT) LIKE ?)';
+    const like = `%${q}%`;
+    params.push(like, like, like, like);
+  }
+  const total = db.prepare(`SELECT COUNT(*) c FROM users u WHERE u.agent_id=?`).get(id).c;
   const rows = db
     .prepare(
       `SELECT u.id, u.first_name, u.last_name, u.username, u.last_message_at, u.created_at,
@@ -142,10 +153,10 @@ router.get('/agents/:id/users', (req, res) => {
               (SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='out') total_out,
               (SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='in' AND m.read_by_agent=0) unread,
               (SELECT kind FROM satisfaction s WHERE s.user_id=u.id AND s.agent_id=u.agent_id AND s.day=?) sat_today
-       FROM users u WHERE u.agent_id=? ORDER BY COALESCE(u.last_message_at,u.created_at) DESC`
+       FROM users u WHERE ${where} ORDER BY COALESCE(u.last_message_at,u.created_at) DESC LIMIT ?`
     )
-    .all(day, id);
-  res.json({ users: rows });
+    .all(day, ...params, limit);
+  res.json({ users: rows, total, shown: rows.length });
 });
 
 // read a user's chat (admin, read-only)

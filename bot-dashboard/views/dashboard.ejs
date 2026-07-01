@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پنل مدیریت بازو</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>پنل مدیریت بازو</h1>
+    <div class="topbar-right">
+      <span id="bot-status" class="bot-status <%= botInfo ? 'connected' : 'disconnected' %>">
+        <%= botInfo ? ('متصل به: @' + botInfo.username) : 'بازو متصل نیست' %>
+      </span>
+      <form method="POST" action="/logout"><button type="submit" class="btn btn-outline">خروج</button></form>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <section id="connect-section" class="card" style="<%= botInfo ? 'display:none' : '' %>">
+      <h2>۱. اتصال به بازو</h2>
+      <p class="hint">توکن بازو (Bot Token) خود را وارد کنید تا بازو بارگذاری و تایید شود.</p>
+      <div class="row">
+        <input id="bot-token" type="password" placeholder="توکن بازو" autocomplete="off">
+        <button id="connect-btn" class="btn btn-primary">بارگذاری بازو</button>
+      </div>
+      <div id="connect-error" class="alert alert-error" style="display:none"></div>
+    </section>
+
+    <div id="app-section" style="<%= botInfo ? '' : 'display:none' %>">
+
+      <section class="card">
+        <h2>۲. آپلود فایل کاربران (CSV)</h2>
+        <p class="hint">فایل CSV حاوی شناسه‌های عددی کاربران را آپلود کنید.</p>
+        <div class="row">
+          <input id="csv-file" type="file" accept=".csv,text/csv">
+          <button id="csv-upload-btn" class="btn btn-primary">آپلود و نمایش</button>
+        </div>
+        <div id="csv-error" class="alert alert-error" style="display:none"></div>
+
+        <div id="csv-result" style="display:none">
+          <div class="row" style="margin-top:12px">
+            <label>ستون شناسه عددی کاربران:
+              <select id="id-column"></select>
+            </label>
+            <span id="csv-meta" class="hint"></span>
+          </div>
+          <div id="row-controls" class="row" style="margin-top:8px">
+            <button id="select-all-btn" type="button" class="btn btn-outline btn-sm">انتخاب همه</button>
+            <button id="select-none-btn" type="button" class="btn btn-outline btn-sm">لغو انتخاب همه</button>
+            <span id="selected-count" class="hint"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="csv-table">
+              <thead></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>۳. نوشتن پیام</h2>
+        <textarea id="message-text" rows="6" placeholder="متن پیام... برای درج لینک از قالب مارک‌داون استفاده کنید: [متن لینک](https://example.com)"></textarea>
+        <label class="checkbox-row">
+          <input type="checkbox" id="parse-mode" checked>
+          فعال‌سازی قالب Markdown (برای لینک و متن پررنگ/مورب)
+        </label>
+
+        <div class="row" style="margin-top:12px">
+          <input id="attachment-file" type="file">
+          <button id="attachment-upload-btn" class="btn btn-outline">آپلود فایل/عکس ضمیمه</button>
+          <span id="attachment-status" class="hint"></span>
+          <button id="attachment-clear-btn" type="button" class="btn btn-outline btn-sm" style="display:none">حذف ضمیمه</button>
+        </div>
+
+        <div class="row" style="margin-top:16px">
+          <label>تاخیر بین ارسال هر پیام (میلی‌ثانیه):
+            <input id="delay-ms" type="number" min="0" value="350" style="width:90px">
+          </label>
+        </div>
+
+        <div id="send-error" class="alert alert-error" style="display:none"></div>
+        <button id="send-btn" class="btn btn-primary btn-lg" style="margin-top:16px">شروع ارسال</button>
+      </section>
+
+      <section id="progress-section" class="card" style="display:none">
+        <h2>۴. وضعیت ارسال</h2>
+        <div class="progress-bar-wrap">
+          <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        <div id="progress-stats" class="hint"></div>
+        <button id="cancel-btn" type="button" class="btn btn-outline" style="margin-top:8px">توقف ارسال</button>
+        <div id="live-log" class="live-log"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/dashboard.js"></script>
+</body>
+</html>

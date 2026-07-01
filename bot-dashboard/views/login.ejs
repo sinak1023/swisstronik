@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ورود | مدیریت بازو</title>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="login-body">
+  <form class="login-card" method="POST" action="/login">
+    <h1>ورود به پنل مدیریت بازو</h1>
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+    <label>
+      نام کاربری
+      <input type="text" name="username" autocomplete="username" required autofocus>
+    </label>
+    <label>
+      رمز عبور
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button type="submit">ورود</button>
+  </form>
+</body>
+</html>

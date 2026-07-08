@@ -79,6 +79,23 @@ document.getElementById('chat-search').addEventListener('input', (e) => {
   _chatSearchT = setTimeout(() => loadChats(q), 300);
 });
 
+// coalesce list re-renders / reloads under high message volume
+let lastNotif = 0;
+let _clRenderT = null;
+function scheduleChatListRender() {
+  if (_clRenderT) return;
+  _clRenderT = setTimeout(() => {
+    _clRenderT = null;
+    chats.sort((a, b) => (b.last_message_at || 0) - (a.last_message_at || 0));
+    renderChatList();
+  }, 500);
+}
+let _clReloadT = null;
+function scheduleChatsReload() {
+  if (_clReloadT) return;
+  _clReloadT = setTimeout(() => { _clReloadT = null; loadChats(); }, 800);
+}
+
 function avatarPlaceholder() { return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40"><rect width="40" height="40" fill="%23dde4f0"/></svg>'); }
 function mediaLabel(type) {
   return { voice: '🎤 پیام صوتی', photo: '🖼 عکس', video: '🎬 ویدیو', audio: '🎵 صدا', document: '📎 فایل', sticker: '🌟 استیکر' }[type] || '📎 فایل';
@@ -481,12 +498,10 @@ function setupSocket() {
       if (m.direction === 'in') api(`/api/agent/chats/${activeUserId}/read`, { method: 'POST', body: '{}' }).catch(() => {});
     } else if (m.direction === 'in') {
       const c = chats.find((x) => x.id === m.user_id);
-      if (c) { c.unread = (c.unread || 0) + 1; c.last_text = m.text; c.last_type = m.type; c.last_message_at = m.created_at; }
-      else { loadChats(); return; }
-      // move to top
-      chats.sort((a, b) => (b.last_message_at || 0) - (a.last_message_at || 0));
-      renderChatList();
-      toast('پیام جدید از ' + userName(c), 'ok', 2000);
+      if (!c) { scheduleChatsReload(); return; }
+      c.unread = (c.unread || 0) + 1; c.last_text = m.text; c.last_type = m.type; c.last_message_at = m.created_at;
+      scheduleChatListRender();
+      if (Date.now() - lastNotif > 3000) { lastNotif = Date.now(); toast('پیام جدید از ' + userName(c), 'ok', 2000); }
     }
   });
   // delivery status updates for our outgoing messages (clock -> check / failed)

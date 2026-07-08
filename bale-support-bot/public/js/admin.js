@@ -71,40 +71,59 @@ async function loadOverview() {
 }
 function avatarPh() { return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect width="30" height="30" fill="%23dde4f0"/></svg>'); }
 
-let _auAgentId = null;
-async function viewAgentUsers(agentId, name) {
-  _auAgentId = agentId;
+let _au = null;
+function viewAgentUsers(agentId, name) {
+  _au = { agentId, name, q: '', sat: '', unread: false, sort: 'recent', offset: 0, limit: 50 };
   openModal(`<h3>کاربران ${esc(name)}</h3>
-    <div class="field"><input id="au-search" placeholder="🔍 جستجوی کاربر (نام / یوزرنیم / آیدی)..." autocomplete="off" /></div>
-    <div id="au-count" style="font-size:12px;color:var(--muted);margin-bottom:6px">در حال بارگذاری…</div>
-    <div class="table-wrap" style="max-height:52vh;overflow:auto"><table>
+    <div class="row" style="margin-bottom:8px">
+      <input id="au-q" placeholder="🔍 نام / یوزرنیم / آیدی" autocomplete="off" style="min-width:150px"/>
+      <select id="au-sat" class="shrink" style="max-width:150px"><option value="">وضعیت: همه</option><option value="satisfied">راضی امروز</option><option value="dissatisfied">ناراضی امروز</option></select>
+      <select id="au-sort" class="shrink" style="max-width:150px"><option value="recent">جدیدترین</option><option value="oldest">قدیمی‌ترین</option><option value="messages">بیشترین پیام</option><option value="name">نام</option></select>
+      <label class="shrink" style="display:flex;align-items:center;gap:4px;font-size:13px;white-space:nowrap"><input type="checkbox" id="au-unread" style="width:auto"/> فقط نخوانده</label>
+    </div>
+    <div id="au-count" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
+    <div class="table-wrap" style="max-height:50vh;overflow:auto"><table>
       <thead><tr><th>کاربر</th><th>دریافتی</th><th>پاسخ</th><th>نخوانده</th><th>عملیات</th></tr></thead>
       <tbody id="au-rows"></tbody></table></div>
+    <div style="text-align:center;margin-top:10px"><button class="btn ghost hidden" id="au-more">نمایش بیشتر</button></div>
     <div class="modal-actions"><button class="btn ghost" onclick="closeModal()">بستن</button></div>`);
-  const input = document.getElementById('au-search');
+  const modal = document.querySelector('#modal-bg .modal'); if (modal) modal.style.maxWidth = '780px';
   let t;
-  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => loadAgentUsers(input.value), 300); });
-  loadAgentUsers('');
+  document.getElementById('au-q').addEventListener('input', (e) => { _au.q = e.target.value.trim(); clearTimeout(t); t = setTimeout(() => { _au.offset = 0; loadAgentUsers(false); }, 250); });
+  document.getElementById('au-sat').addEventListener('change', (e) => { _au.sat = e.target.value; _au.offset = 0; loadAgentUsers(false); });
+  document.getElementById('au-sort').addEventListener('change', (e) => { _au.sort = e.target.value; _au.offset = 0; loadAgentUsers(false); });
+  document.getElementById('au-unread').addEventListener('change', (e) => { _au.unread = e.target.checked; _au.offset = 0; loadAgentUsers(false); });
+  document.getElementById('au-more').addEventListener('click', () => { _au.offset += _au.limit; loadAgentUsers(true); });
+  loadAgentUsers(false);
 }
-async function loadAgentUsers(q) {
+async function loadAgentUsers(append) {
   const rowsEl = document.getElementById('au-rows');
   if (!rowsEl) return;
+  const p = new URLSearchParams({ q: _au.q, sort: _au.sort, limit: _au.limit, offset: _au.offset });
+  if (_au.sat) p.set('sat', _au.sat);
+  if (_au.unread) p.set('unread', '1');
+  if (!append) rowsEl.innerHTML = '<tr><td colspan="5" class="center-load">در حال بارگذاری…</td></tr>';
   try {
-    const r = await apiGet(`/api/admin/agents/${_auAgentId}/users?q=${encodeURIComponent(q || '')}&limit=200`);
-    const cnt = document.getElementById('au-count');
-    if (cnt) cnt.textContent = `نمایش ${r.shown} از ${r.total} کاربر` + (r.shown < r.total ? ' — برای یافتن بقیه جستجو کنید' : '');
-    rowsEl.innerHTML = r.users.map((u) => {
-      const label = u.sat_today === 'satisfied' ? '<span class="badge green">راضی</span>'
-        : u.sat_today === 'dissatisfied' ? '<span class="badge red">ناراضی</span>' : '';
-      return `<tr>
-        <td>${esc(userName(u))} ${label}</td>
-        <td>${u.total_in}</td><td>${u.total_out}</td>
-        <td>${u.unread ? `<span class="badge blue">${u.unread}</span>` : '0'}</td>
-        <td><button class="btn sm ghost" onclick="readChat(${u.id})">خواندن چت</button>
-            <button class="btn sm ghost" onclick="reassignUser(${u.id})">انتقال</button></td>
-      </tr>`;
-    }).join('') || '<tr><td colspan="5" class="center-load">کاربری یافت نشد</td></tr>';
-  } catch (e) { rowsEl.innerHTML = '<tr><td colspan="5" class="center-load">خطا در بارگذاری</td></tr>'; }
+    const r = await apiGet(`/api/admin/agents/${_au.agentId}/users?` + p.toString());
+    const html = r.users.map(auRow).join('');
+    if (append) rowsEl.insertAdjacentHTML('beforeend', html);
+    else rowsEl.innerHTML = html || '<tr><td colspan="5" class="center-load">کاربری یافت نشد</td></tr>';
+    const shownSoFar = _au.offset + r.shown;
+    document.getElementById('au-count').textContent =
+      `نمایش ${Math.min(shownSoFar, r.filtered)} از ${r.filtered}` + (r.filtered !== r.total ? ` (کل کاربران: ${r.total})` : '');
+    document.getElementById('au-more').classList.toggle('hidden', shownSoFar >= r.filtered);
+  } catch (e) { if (!append) rowsEl.innerHTML = '<tr><td colspan="5" class="center-load">خطا در بارگذاری</td></tr>'; }
+}
+function auRow(u) {
+  const label = u.sat_today === 'satisfied' ? '<span class="badge green">راضی</span>'
+    : u.sat_today === 'dissatisfied' ? '<span class="badge red">ناراضی</span>' : '';
+  return `<tr>
+    <td>${esc(userName(u))} ${label}</td>
+    <td>${u.total_in}</td><td>${u.total_out}</td>
+    <td>${u.unread ? `<span class="badge blue">${u.unread}</span>` : '0'}</td>
+    <td><button class="btn sm ghost" onclick="readChat(${u.id})">خواندن چت</button>
+        <button class="btn sm ghost" onclick="reassignUser(${u.id})">انتقال</button></td>
+  </tr>`;
 }
 
 async function readChat(userId) {
@@ -313,7 +332,13 @@ document.getElementById('set-save').addEventListener('click', async () => {
 // ---------------- realtime ----------------
 function setupSocket() {
   socket = connectSocket();
-  const refreshOv = () => { if (!document.getElementById('view-overview').classList.contains('hidden')) loadOverview(); };
+  // coalesce overview refreshes — under heavy message volume we must not reload on every event
+  let ovTimer = null;
+  const refreshOv = () => {
+    if (document.getElementById('view-overview').classList.contains('hidden')) return;
+    if (ovTimer) return;
+    ovTimer = setTimeout(() => { ovTimer = null; loadOverview(); }, 4000);
+  };
   socket.on('message:new', refreshOv);
   socket.on('satisfaction:update', refreshOv);
   socket.on('survey:progress', (d) => {

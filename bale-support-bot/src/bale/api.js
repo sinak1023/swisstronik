@@ -66,9 +66,32 @@ async function rawRequest(method, body, isForm) {
   return data.result;
 }
 
-// Public: JSON method call (throttled)
+// Public: JSON method call (throttled — used for sending, which Bale rate-limits)
 function call(method, params) {
   return schedule(() => rawRequest(method, params, false));
+}
+
+// ---- Separate concurrency-limited pool for READ methods (getFile) ----
+// Reads must NOT sit behind the send throttle, otherwise viewing media would
+// serialize behind (and slow down) message delivery for everyone.
+let readActive = 0;
+const readQueue = [];
+const READ_CONCURRENCY = 6;
+function scheduleRead(fn) {
+  return new Promise((resolve, reject) => {
+    readQueue.push({ fn, resolve, reject });
+    pumpRead();
+  });
+}
+function pumpRead() {
+  while (readActive < READ_CONCURRENCY && readQueue.length) {
+    const { fn, resolve, reject } = readQueue.shift();
+    readActive++;
+    Promise.resolve().then(fn).then(resolve, reject).finally(() => { readActive--; pumpRead(); });
+  }
+}
+function callRead(method, params) {
+  return scheduleRead(() => rawRequest(method, params, false));
 }
 
 // Public: multipart call for uploading a local file (throttled)
@@ -88,11 +111,19 @@ function callForm(method, fields, fileField, file) {
   });
 }
 
-// Resolve a Bale file_id to a downloadable URL
+// Resolve a Bale file_id to a downloadable URL, cached (~50 min; Bale links live 1h).
+// Cuts repeated getFile calls when many people view the same media.
+const fileUrlCache = new Map(); // fileId -> { url, exp }
+const FILE_URL_TTL = 50 * 60 * 1000;
 async function getFileUrl(fileId) {
-  const f = await call('getFile', { file_id: fileId });
+  const cached = fileUrlCache.get(fileId);
+  if (cached && cached.exp > Date.now()) return cached.url;
+  const f = await callRead('getFile', { file_id: fileId });
   if (!f || !f.file_path) return null;
-  return `${FILE_PREFIX}/${f.file_path}`;
+  const url = `${FILE_PREFIX}/${f.file_path}`;
+  fileUrlCache.set(fileId, { url, exp: Date.now() + FILE_URL_TTL });
+  if (fileUrlCache.size > 5000) fileUrlCache.delete(fileUrlCache.keys().next().value);
+  return url;
 }
 
-module.exports = { call, callForm, getFileUrl, BaleError, API_PREFIX, FILE_PREFIX };
+module.exports = { call, callRead, callForm, getFileUrl, BaleError, API_PREFIX, FILE_PREFIX };

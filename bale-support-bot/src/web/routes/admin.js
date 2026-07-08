@@ -131,21 +131,42 @@ router.post('/agents/shares', (req, res) => {
   res.json({ ok: true });
 });
 
-// users assigned to an agent (with per-user today stats + satisfaction label)
-// supports ?q= search and ?limit= for large agent caseloads
+// users assigned to an agent — search + filter + sort + pagination for large caseloads
 router.get('/agents/:id/users', (req, res) => {
   const id = Number(req.params.id);
   const day = todayStr();
   const q = (req.query.q || '').toString().trim();
-  const limit = Math.min(Number(req.query.limit) || 100, 500);
-  const params = [id];
-  let where = 'u.agent_id=?';
+  const sat = ['satisfied', 'dissatisfied'].includes(req.query.sat) ? req.query.sat : null;
+  const unread = req.query.unread === '1';
+  const sort = req.query.sort || 'recent';
+  const limit = Math.min(Number(req.query.limit) || 50, 200);
+  const offset = Math.max(Number(req.query.offset) || 0, 0);
+
+  const cond = ['u.agent_id=?'];
+  const wp = [id];
   if (q) {
-    where += ' AND (u.first_name LIKE ? OR u.last_name LIKE ? OR u.username LIKE ? OR CAST(u.id AS TEXT) LIKE ?)';
+    cond.push('(u.first_name LIKE ? OR u.last_name LIKE ? OR u.username LIKE ? OR CAST(u.id AS TEXT) LIKE ?)');
     const like = `%${q}%`;
-    params.push(like, like, like, like);
+    wp.push(like, like, like, like);
   }
-  const total = db.prepare(`SELECT COUNT(*) c FROM users u WHERE u.agent_id=?`).get(id).c;
+  if (sat) {
+    cond.push('EXISTS (SELECT 1 FROM satisfaction s WHERE s.user_id=u.id AND s.agent_id=u.agent_id AND s.day=? AND s.kind=?)');
+    wp.push(day, sat);
+  }
+  if (unread) {
+    cond.push("EXISTS (SELECT 1 FROM messages m WHERE m.user_id=u.id AND m.direction='in' AND m.read_by_agent=0)");
+  }
+  const where = cond.join(' AND ');
+  const orderMap = {
+    recent: 'COALESCE(u.last_message_at,u.created_at) DESC',
+    oldest: 'COALESCE(u.last_message_at,u.created_at) ASC',
+    name: 'u.first_name COLLATE NOCASE ASC, u.last_name COLLATE NOCASE ASC',
+    messages: "(SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='in') DESC",
+  };
+  const orderBy = orderMap[sort] || orderMap.recent;
+
+  const total = db.prepare('SELECT COUNT(*) c FROM users u WHERE u.agent_id=?').get(id).c;
+  const filtered = db.prepare(`SELECT COUNT(*) c FROM users u WHERE ${where}`).get(...wp).c;
   const rows = db
     .prepare(
       `SELECT u.id, u.first_name, u.last_name, u.username, u.last_message_at, u.created_at,
@@ -153,10 +174,10 @@ router.get('/agents/:id/users', (req, res) => {
               (SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='out') total_out,
               (SELECT COUNT(*) FROM messages m WHERE m.user_id=u.id AND m.direction='in' AND m.read_by_agent=0) unread,
               (SELECT kind FROM satisfaction s WHERE s.user_id=u.id AND s.agent_id=u.agent_id AND s.day=?) sat_today
-       FROM users u WHERE ${where} ORDER BY COALESCE(u.last_message_at,u.created_at) DESC LIMIT ?`
+       FROM users u WHERE ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     )
-    .all(day, ...params, limit);
-  res.json({ users: rows, total, shown: rows.length });
+    .all(day, ...wp, limit, offset);
+  res.json({ users: rows, total, filtered, shown: rows.length, offset, limit });
 });
 
 // read a user's chat (admin, read-only)

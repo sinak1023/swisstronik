@@ -36,7 +36,8 @@ function recordMessage(fields) {
     created_at: fields.created_at || Date.now(),
   };
   const info = insertMsg.run(row);
-  const full = db.prepare('SELECT * FROM messages WHERE id=?').get(info.lastInsertRowid);
+  // build the full row locally instead of re-querying (cheaper at high volume)
+  const full = { id: info.lastInsertRowid, pinned: 0, ...row };
   emitNew(full);
   return full;
 }

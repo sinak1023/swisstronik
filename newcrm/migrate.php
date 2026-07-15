@@ -297,6 +297,17 @@ try {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     out("  ok");
 
+    // ===== 16) وضعیت پیش‌فرض لیدها: new -> pending =====
+    // لیدهای جدید/ایمپورت‌شده باید «در انتظار» باشند؛ مقدار 'new' در هیچ فیلتری وجود ندارد.
+    out("\n[16] leads default status -> pending");
+    if (table_exists($pdo, $dbName, 'leads') && column_exists($pdo, $dbName, 'leads', 'status')) {
+        $pdo->exec("ALTER TABLE `leads` MODIFY `status` VARCHAR(30) NOT NULL DEFAULT 'pending'");
+        $fixed = $pdo->exec("UPDATE `leads` SET `status` = 'pending' WHERE `status` = 'new' OR `status` = '' OR `status` IS NULL");
+        out("  column default set to 'pending'; fixed rows: " . (int)$fixed);
+    } else {
+        out("  skip (leads.status not found)");
+    }
+
     out("\n✅ Migration finished successfully.");
 } catch (Exception $e) {
     out("\n❌ Migration error: " . $e->getMessage());

@@ -30,7 +30,12 @@ if (!in_array($root, $permissions)) {
 $leads_func = new Leads($db);
 $id = (int)($_POST['id'] ?? 0);
 $name = trim($_POST['name'] ?? '');
-$status = $_POST['status'] ?? 'new';
+$status = $_POST['status'] ?? 'pending';
+// فقط وضعیت‌های معتبر پذیرفته می‌شوند
+$valid_statuses = ['pending', 'success', 'not_answer', 'following', 'purchased', 'rejected'];
+if (!in_array($status, $valid_statuses)) {
+    $status = 'pending';
+}
 
 // روش‌های تماس (اختیاری) — در صورت خالی بودن، شمارهٔ اصلی لید مبناست
 $whatsapp_phone = trim($_POST['whatsapp_phone'] ?? '');

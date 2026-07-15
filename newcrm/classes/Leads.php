@@ -24,7 +24,7 @@ class Leads
             Phone::normalize($data['phone']),
             $data['notes'] ?? null,
             $data['assigned_to'] ?? null,
-            $data['status'] ?? 'new'
+            $data['status'] ?? 'pending'
         ];
         $this->db->execute($sql, $params);
         return $this->db->lastInsertId();
@@ -339,8 +339,8 @@ class Leads
     {
         $inserted = 0;
         $stmt = $this->db->prepare("
-            INSERT INTO {$this->table} (project_id, name, phone, phone_norm, created_at, updated_at)
-            VALUES (?, ?, ?, ?, NOW(), NOW())
+            INSERT INTO {$this->table} (project_id, name, phone, phone_norm, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 'pending', NOW(), NOW())
             ON DUPLICATE KEY UPDATE name = VALUES(name), updated_at = NOW()
         ");
 

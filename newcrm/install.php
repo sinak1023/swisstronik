@@ -160,7 +160,7 @@ function create_schema($pdo)
         `bale_phone` VARCHAR(20) NULL,
         `notes` TEXT NULL,
         `assigned_to` INT NULL,
-        `status` VARCHAR(30) NOT NULL DEFAULT 'new',
+        `status` VARCHAR(30) NOT NULL DEFAULT 'pending',
         `called` TINYINT(1) NOT NULL DEFAULT 0,
         `called_at` DATETIME NULL,
         `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,

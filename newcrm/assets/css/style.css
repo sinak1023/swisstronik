@@ -1,0 +1,405 @@
+@import url("https://fonts.googleapis.com/css?family=Open+Sans:400,600,700");
+
+
+:root,
+.light {
+  --background: #f3f4f6;
+  --surface: #ffffff;
+  --text: #1f2937;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-darker: #1e40af;
+  --header-bg: #1e3a8a;
+  --muted: #f3f4f6;
+  --border: #d1d5db;
+  --holiday: #ff0000;
+  --orange-500: oklch(70.5% 0.213 47.604);
+  --orange-600: oklch(64.6% 0.222 41.116);
+  --orange-700: oklch(55.3% 0.195 38.402);
+}
+
+.dark {
+  --background: #0f172a;
+  --surface: #1e293b;
+  --text: #e2e8f0;
+  --primary: #3b82f6;
+  --primary-dark: #2563eb;
+  --primary-darker: #1d4ed8;
+  --header-bg: #1e293b;
+  --muted: #334155;
+  --border: #475569;
+  --holiday: #ff0000;
+  --orange-500: oklch(70.5% 0.213 47.604);
+  --orange-600: oklch(64.6% 0.222 41.116);
+  --orange-700: oklch(55.3% 0.195 38.402);
+}
+
+@font-face {
+  font-family: IRANSans;
+  font-style: normal;
+  font-weight: bold;
+  src: url("../font/IRANSansWeb_Light.eot");
+  src: url("../font/IRANSansWeb_Lightd41dd41d.eot?#iefix")
+      format("embedded-opentype"),
+    url("../font/IRANSansWeb_Light.woff2") format("woff2"),
+    url("../font/IRANSansWeb_Light.woff") format("woff"),
+    url("../font/IRANSansWeb_Light.ttf") format("truetype");
+}
+
+html {
+  overflow-x: hidden;
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text);
+  margin: 0;
+  text-align: right;
+  direction: rtl;
+  font-size: 13px;
+  font-family: IRANSans, Tahoma, sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  width: 100%;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+nav {
+  background-color: var(--header-bg);
+  transition: background-color 0.3s ease;
+  border-bottom: 1px solid var(--border);
+}
+
+#sidebar {
+  background-color: var(--surface);
+  color: var(--text);
+  border-left: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+
+#sidebar a {
+  color: var(--text);
+  transition: background-color 0.2s ease;
+}
+
+#sidebar a:hover {
+  background-color: var(--muted);
+}
+
+#userMenu {
+  background-color: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+#userMenu a {
+  color: var(--text);
+}
+
+#userMenu a:hover {
+  background-color: var(--muted);
+}
+
+
+button.bg-primary,
+.bg-primary {
+  background-color: var(--primary);
+  transition: background-color 0.2s ease;
+}
+
+button.bg-primary:hover,
+.bg-primary:hover {
+  background-color: var(--primary-dark);
+}
+
+button.bg-primary:active,
+.bg-primary:active {
+  background-color: var(--primary-darker);
+}
+
+
+.bg-surface {
+  background-color: var(--surface);
+}
+
+
+.text-text {
+  color: var(--text);
+}
+
+
+.border {
+  border-color: var(--border);
+}
+
+
+input,
+select,
+textarea,
+.select2 {
+  background-color: var(--background);
+  color: var(--text);
+  border-color: var(--border);
+  transition: all 0.2s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  --tw-ring-color: var(--primary);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+}
+
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark input::placeholder,
+.dark select::placeholder,
+.dark textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3) !important;
+  background-color: #1e293b !important;
+}
+
+
+table {
+  background-color: var(--surface);
+  color: var(--text);
+}
+
+table th,
+table td {
+  border-color: var(--border);
+}
+
+table tr:hover {
+  background-color: var(--muted);
+  transition: background-color 0.2s ease;
+}
+
+
+#loadingOverlay {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+#loadingOverlay .border-t-primary {
+  border-top-color: var(--primary);
+}
+
+#lockScreenModal {
+  background-color: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+#lockScreenModal .bg-surface {
+  background-color: var(--surface);
+}
+
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+}
+
+
+.dark .bg-white,
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: var(--surface) !important;
+}
+
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border-gray-400 {
+  border-color: var(--border) !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: var(--text) !important;
+}
+
+.dark .text-gray-500 {
+  color: #94a3b8 !important;
+}
+
+
+#snackbar {
+  background-color: var(--primary);
+  color: white;
+}
+
+
+#sidebar svg {
+  color: var(--text);
+}
+
+
+@media (max-width: 640px) {
+  #userMenu {
+    margin-right: -105px;
+    width: 170px;
+  }
+  .order-first {
+    order: -1;
+  }
+}
+
+.dir-rtl {
+  direction: rtl;
+}
+
+.dir-ltr {
+  direction: ltr;
+}
+
+
+* {
+  transition: background-color 0.2s ease, color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+
+.focus\:ring-blue-500:focus {
+  --tw-ring-color: rgba(59, 130, 246, 0.5);
+}
+
+
+.dark ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+
+
+#persianCalendar {
+    font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+    #persianCalendar {
+        font-size: 0.75rem;
+    }
+    
+    #calendarDays > div {
+        padding: 0.25rem;
+    }
+    
+    #calendarTitle {
+        font-size: 0.875rem;
+    }
+}
+
+
+#calendarDays > div .reminder-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background-color: #dc2626;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px white;
+    z-index: 20;
+}
+
+
+#calendarDays > div:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+
+#persianCalendar {
+    font-size: 0.875rem;
+}
+
+@media (max-width: 640px) {
+    #persianCalendar {
+        font-size: 0.75rem;
+    }
+    #calendarDays > div {
+        padding: 0.125rem;
+    }
+    #calendarTitle {
+        font-size: 0.875rem;
+    }
+}
+
+
+.reminder-dot {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 6px;
+    height: 6px;
+    background-color: #dc2626;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1.5px white;
+    z-index: 20;
+}
+
+
+#calendarDays > div {
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+#calendarDays > div:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
+
+@media (max-width: 640px) {
+    #leadModal .max-w-5xl,
+    #addReminderModal .max-w-md {
+        margin: 1rem;
+        max-height: 92vh;
+    }
+}

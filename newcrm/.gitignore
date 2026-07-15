@@ -1,0 +1,16 @@
+logs/*
+!logs/.gitkeep
+states/*
+!states/.gitkeep
+Invoices/*.pdf
+cronjobs/*.lock
+cronjobs/error_log
+db_config.php
+install.lock
+
+sessions/*
+!sessions/.gitkeep
+!sessions/.htaccess
+
+uploads/receipts/*
+!uploads/receipts/.gitkeep

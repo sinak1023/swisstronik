@@ -42,6 +42,28 @@ html.a2hsp-lock body {
   overscroll-behavior: none;
 }
 
+/* ---------- hard reset: isolate the popup from theme styles ---------- */
+.a2hsp-root,
+.a2hsp-root * {
+  box-sizing: border-box !important;
+  text-shadow: none !important;
+  letter-spacing: normal !important;
+  text-transform: none !important;
+}
+.a2hsp-root button {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  margin: 0 !important;
+  text-decoration: none !important;
+  outline: none;
+}
+.a2hsp-panel,
+.a2hsp-panel p,
+.a2hsp-panel div,
+.a2hsp-panel span {
+  color: inherit;
+}
+
 /* ---------- backdrop: covers the entire page ---------- */
 .a2hsp-backdrop {
   position: absolute;
@@ -141,12 +163,13 @@ html.a2hsp-lock body {
   inset-inline-start: 14px;
   width: 32px;
   height: 32px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--a2hsp-chip);
-  color: var(--a2hsp-muted);
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: var(--a2hsp-chip) !important;
+  color: var(--a2hsp-muted) !important;
   font-size: 20px;
   line-height: 1;
+  padding: 0 !important;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -162,7 +185,11 @@ html.a2hsp-lock body {
   display: flex;
   align-items: center;
   gap: 16px;
-  margin: 6px 0 4px;
+  /* extra top margin keeps the title clear of the close button */
+  margin: 26px 0 4px;
+}
+.a2hsp-root.a2hsp-fullscreen .a2hsp-head {
+  margin-top: 34px;
 }
 .a2hsp-icon {
   flex: 0 0 auto;
@@ -296,20 +323,20 @@ html.a2hsp-lock body {
   gap: 10px;
 }
 .a2hsp-cta {
-  width: 100%;
-  border: 0;
-  border-radius: 16px;
-  padding: 16px;
-  font-size: 16px;
-  font-weight: 800;
-  font-family: inherit;
-  color: #fff;
+  width: 100% !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+  padding: 16px !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  font-family: inherit !important;
+  color: #fff !important;
   cursor: pointer;
   background: linear-gradient(
     135deg,
     var(--a2hsp-accent),
     color-mix(in srgb, var(--a2hsp-accent) 70%, #000)
-  );
+  ) !important;
   box-shadow: 0 10px 26px color-mix(in srgb, var(--a2hsp-accent) 45%, transparent);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   position: relative;
@@ -317,7 +344,7 @@ html.a2hsp-lock body {
 }
 @supports not (background: color-mix(in srgb, red 10%, blue)) {
   .a2hsp-cta {
-    background: var(--a2hsp-accent);
+    background: var(--a2hsp-accent) !important;
     box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
   }
 }
@@ -343,13 +370,15 @@ html.a2hsp-lock body {
   }
 }
 .a2hsp-later {
-  width: 100%;
-  border: 0;
-  background: none;
-  color: var(--a2hsp-muted);
-  font-size: 14px;
-  font-family: inherit;
-  padding: 8px;
+  width: 100% !important;
+  border: 0 !important;
+  background: none !important;
+  color: var(--a2hsp-muted) !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  font-family: inherit !important;
+  box-shadow: none !important;
+  padding: 8px !important;
   cursor: pointer;
 }
 
@@ -483,14 +512,15 @@ html.a2hsp-lock body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1.5px solid var(--a2hsp-accent);
-  background: none;
-  color: var(--a2hsp-accent);
-  font-family: inherit;
-  font-size: 13.5px;
-  font-weight: 700;
-  border-radius: 12px;
-  padding: 10px 22px;
+  border: 1.5px solid var(--a2hsp-accent) !important;
+  background: none !important;
+  color: var(--a2hsp-accent) !important;
+  font-family: inherit !important;
+  font-size: 13.5px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  padding: 10px 22px !important;
   cursor: pointer;
 }
 

@@ -4,7 +4,7 @@ Tags: pwa, add to home screen, install, a2hs, web app
 Requires at least: 5.8
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 
 پاپ‌آپ نصب وب‌اپ به سبک اپ‌استور با پوشش تمام‌صفحه، گالری اسکرین‌شات و راهنمای اختصاصی هر مرورگر.

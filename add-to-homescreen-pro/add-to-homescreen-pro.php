@@ -3,7 +3,7 @@
  * Plugin Name: Add to Home Screen Pro (PWA)
  * Plugin URI:  https://example.com/add-to-homescreen-pro
  * Description: پاپ‌آپ تمام‌صفحه نصب وب‌اپ به سبک اپ‌استور — با گالری اسکرین‌شات، راهنمای اختصاصی هر مرورگر (Safari ،Chrome iOS، سامسونگ، فایرفاکس، مرورگر داخلی اینستاگرام/تلگرام)، حالت تیره، و پنل تنظیمات کامل.
- * Version:     2.0.0
+ * Version:     2.1.0
  * Author:      You
  * License:     GPL-2.0+
  * Text Domain: a2hsp
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'A2HSP_VERSION', '2.0.0' );
+define( 'A2HSP_VERSION', '2.1.0' );
 define( 'A2HSP_URL', plugin_dir_url( __FILE__ ) );
 define( 'A2HSP_PATH', plugin_dir_path( __FILE__ ) );
 
@@ -31,13 +31,21 @@ function a2hsp_default_settings() {
 		'description'      => get_bloginfo( 'description' ),
 		'icon_url'         => '',
 		'screenshots'      => array(), // array of URLs
+		'splash_image'     => '',      // iOS splash screen image (portrait)
 		// Design
-		'theme_color'      => '#1e293b',
-		'background_color' => '#ffffff',
-		'accent_color'     => '#4f46e5',
+		'theme_color'      => '#123F76',
+		'background_color' => '#123F76',
+		'accent_color'     => '#123F76',
 		'display_style'    => 'sheet',      // sheet | fullscreen
 		'dark_mode'        => 'auto',       // auto | light | dark
 		'direction'        => 'rtl',        // rtl | ltr
+		// Element visibility toggles
+		'show_subtitle'    => 1,
+		'show_host'        => 1,
+		'show_description' => 1,
+		'show_features'    => 1,
+		'show_screenshots' => 1,
+		'show_later'       => 1,
 		// Behavior
 		'auto_show'        => 1,
 		'delay_seconds'    => 3,
@@ -209,6 +217,41 @@ function a2hsp_head_tags() {
 	if ( $icon ) {
 		echo '<link rel="apple-touch-icon" href="' . esc_url( $icon ) . '">' . "\n";
 	}
+
+	/*
+	 * iOS splash screen (apple-touch-startup-image).
+	 * Android splash is generated automatically from the manifest
+	 * (background_color + icon + name); iOS needs explicit links
+	 * with device media queries.
+	 */
+	if ( $s['splash_image'] ) {
+		$devices = array(
+			array( 320, 568, 2 ),
+			array( 375, 667, 2 ),
+			array( 414, 736, 3 ),
+			array( 375, 812, 3 ),
+			array( 390, 844, 3 ),
+			array( 393, 852, 3 ),
+			array( 414, 896, 2 ),
+			array( 414, 896, 3 ),
+			array( 428, 926, 3 ),
+			array( 430, 932, 3 ),
+			array( 768, 1024, 2 ),
+			array( 810, 1080, 2 ),
+			array( 834, 1112, 2 ),
+			array( 834, 1194, 2 ),
+			array( 1024, 1366, 2 ),
+		);
+		foreach ( $devices as $d ) {
+			printf(
+				'<link rel="apple-touch-startup-image" media="(device-width: %1$dpx) and (device-height: %2$dpx) and (-webkit-device-pixel-ratio: %3$d) and (orientation: portrait)" href="%4$s">' . "\n",
+				$d[0],
+				$d[1],
+				$d[2],
+				esc_url( $s['splash_image'] )
+			);
+		}
+	}
 }
 
 /**
@@ -225,6 +268,9 @@ function a2hsp_enqueue_assets() {
 
 	wp_enqueue_style( 'a2hsp', A2HSP_URL . 'assets/a2hs-pro.css', array(), A2HSP_VERSION );
 	wp_enqueue_script( 'a2hsp', A2HSP_URL . 'assets/a2hs-pro.js', array(), A2HSP_VERSION, true );
+
+	// Manual-trigger button ([a2hs_button]) picks up the accent color
+	wp_add_inline_style( 'a2hsp', '.a2hsp-open-btn{background:' . esc_attr( $s['accent_color'] ) . ' !important;color:#fff !important;}' );
 
 	$icon = $s['icon_url'] ? $s['icon_url'] : get_site_icon_url( 512 );
 
@@ -246,6 +292,14 @@ function a2hsp_enqueue_assets() {
 		'minVisits'   => (int) $s['min_visits'],
 		'desktop'     => (int) $s['show_on_desktop'],
 		'host'        => wp_parse_url( home_url(), PHP_URL_HOST ),
+		'show'        => array(
+			'subtitle'    => (int) $s['show_subtitle'],
+			'host'        => (int) $s['show_host'],
+			'description' => (int) $s['show_description'],
+			'features'    => (int) $s['show_features'],
+			'screenshots' => (int) $s['show_screenshots'],
+			'later'       => (int) $s['show_later'],
+		),
 		'txt'         => array(
 			'title'      => $s['txt_title'],
 			'subtitle'   => $s['txt_subtitle'],

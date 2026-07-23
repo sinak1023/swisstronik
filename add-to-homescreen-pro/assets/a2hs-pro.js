@@ -7,6 +7,11 @@
 
   var D = window.A2HSP || {};
   var T = D.txt || {};
+  // Element visibility toggles from admin panel (default: everything on)
+  var SHOW = D.show || {};
+  function shown(key) {
+    return SHOW[key] === undefined || !!SHOW[key];
+  }
 
   /* ================= Service worker ================= */
   if ('serviceWorker' in navigator && D.swUrl) {
@@ -292,23 +297,31 @@
     }
     var meta = el('div', 'a2hsp-meta');
     meta.appendChild(el('div', 'a2hsp-name', escapeHtml(D.appName)));
-    meta.appendChild(el('div', 'a2hsp-host', escapeHtml(D.host || '')));
-    meta.appendChild(el('div', 'a2hsp-sub', escapeHtml(T.subtitle || '')));
+    if (shown('host') && D.host) {
+      meta.appendChild(el('div', 'a2hsp-host', escapeHtml(D.host)));
+    }
+    if (shown('subtitle') && T.subtitle) {
+      meta.appendChild(el('div', 'a2hsp-sub', escapeHtml(T.subtitle)));
+    }
     head.appendChild(meta);
     sheet.appendChild(head);
 
     // ---- description ----
-    if (D.description) {
+    if (shown('description') && D.description) {
       sheet.appendChild(el('p', 'a2hsp-desc', escapeHtml(D.description)));
     }
 
     // ---- features ----
-    var feats = buildFeatures();
-    if (feats) sheet.appendChild(feats);
+    if (shown('features')) {
+      var feats = buildFeatures();
+      if (feats) sheet.appendChild(feats);
+    }
 
     // ---- screenshots gallery ----
-    var shots = buildScreenshots();
-    if (shots) sheet.appendChild(shots);
+    if (shown('screenshots')) {
+      var shots = buildScreenshots();
+      if (shots) sheet.appendChild(shots);
+    }
 
     // ---- body: CTA or guide ----
     var body = el('div', 'a2hsp-body');
@@ -333,10 +346,12 @@
       });
       body.appendChild(cta);
 
-      var later = el('button', 'a2hsp-later', escapeHtml(T.later));
-      later.type = 'button';
-      later.addEventListener('click', dismiss);
-      body.appendChild(later);
+      if (shown('later')) {
+        var later = el('button', 'a2hsp-later', escapeHtml(T.later));
+        later.type = 'button';
+        later.addEventListener('click', dismiss);
+        body.appendChild(later);
+      }
     } else if (flow === 'inapp') {
       body.appendChild(el('p', 'a2hsp-inapp-msg', escapeHtml(T.inapp)));
       body.appendChild(buildGuide('inapp'));
@@ -351,10 +366,13 @@
       });
       body.appendChild(cta2);
 
-      var laterBtn = el('button', 'a2hsp-later', escapeHtml(T.later));
-      laterBtn.type = 'button';
-      laterBtn.addEventListener('click', dismiss);
-      body.appendChild(laterBtn);
+      var laterBtn = null;
+      if (shown('later')) {
+        laterBtn = el('button', 'a2hsp-later', escapeHtml(T.later));
+        laterBtn.type = 'button';
+        laterBtn.addEventListener('click', dismiss);
+        body.appendChild(laterBtn);
+      }
     }
 
     sheet.appendChild(body);

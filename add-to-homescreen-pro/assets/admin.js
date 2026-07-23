@@ -28,7 +28,7 @@ jQuery(function ($) {
       iconFrame.on('select', function () {
         var att = iconFrame.state().get('selection').first().toJSON();
         $('#a2hsp_icon_url').val(att.url);
-        $('.a2hsp-icon-preview').html('<img src="' + att.url + '" alt="">');
+        $('.a2hsp-icon-preview').not('.a2hsp-splash-preview').html('<img src="' + att.url + '" alt="">');
       });
     }
     iconFrame.open();
@@ -36,7 +36,32 @@ jQuery(function ($) {
 
   $('#a2hsp-remove-icon').on('click', function () {
     $('#a2hsp_icon_url').val('');
-    $('.a2hsp-icon-preview').empty();
+    $('.a2hsp-icon-preview').not('.a2hsp-splash-preview').empty();
+  });
+
+  // Splash screen picker
+  var splashFrame = null;
+  $('#a2hsp-pick-splash').on('click', function (e) {
+    e.preventDefault();
+    if (!splashFrame) {
+      splashFrame = wp.media({
+        title: 'انتخاب تصویر اسپلش اسکرین',
+        library: { type: 'image' },
+        multiple: false,
+        button: { text: 'انتخاب' }
+      });
+      splashFrame.on('select', function () {
+        var att = splashFrame.state().get('selection').first().toJSON();
+        $('#a2hsp_splash_url').val(att.url);
+        $('.a2hsp-splash-preview').html('<img src="' + att.url + '" alt="" style="width:auto;height:160px;border-radius:12px;">');
+      });
+    }
+    splashFrame.open();
+  });
+
+  $('#a2hsp-remove-splash').on('click', function () {
+    $('#a2hsp_splash_url').val('');
+    $('.a2hsp-splash-preview').empty();
   });
 
   // Screenshots picker (multiple)

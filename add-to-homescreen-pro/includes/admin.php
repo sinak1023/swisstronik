@@ -54,7 +54,12 @@ function a2hsp_sanitize( $input ) {
 			}
 		}
 	}
-	$out['screenshots'] = array_slice( $shots, 0, 8 );
+	$out['screenshots']  = array_slice( $shots, 0, 8 );
+	$out['splash_image'] = esc_url_raw( $input['splash_image'] ?? '' );
+
+	foreach ( array( 'show_subtitle', 'show_host', 'show_description', 'show_features', 'show_screenshots', 'show_later' ) as $flag ) {
+		$out[ $flag ] = empty( $input[ $flag ] ) ? 0 : 1;
+	}
 
 	$out['theme_color']      = sanitize_hex_color( $input['theme_color'] ?? '' ) ?: $d['theme_color'];
 	$out['background_color'] = sanitize_hex_color( $input['background_color'] ?? '' ) ?: $d['background_color'];
@@ -105,7 +110,8 @@ function a2hsp_settings_page() {
 		<h2 class="nav-tab-wrapper a2hsp-tabs">
 			<a href="#a2hsp-tab-general" class="nav-tab nav-tab-active">عمومی</a>
 			<a href="#a2hsp-tab-design" class="nav-tab">ظاهر</a>
-			<a href="#a2hsp-tab-media" class="nav-tab">آیکون و تصاویر</a>
+			<a href="#a2hsp-tab-media" class="nav-tab">لوگو و تصاویر</a>
+			<a href="#a2hsp-tab-elements" class="nav-tab">المان‌های پاپ‌آپ</a>
 			<a href="#a2hsp-tab-behavior" class="nav-tab">رفتار نمایش</a>
 			<a href="#a2hsp-tab-texts" class="nav-tab">متن‌ها</a>
 		</h2>
@@ -191,6 +197,20 @@ function a2hsp_settings_page() {
 						</td>
 					</tr>
 					<tr>
+						<th scope="row">اسپلش اسکرین (iOS)</th>
+						<td>
+							<div class="a2hsp-splash-preview a2hsp-icon-preview">
+								<?php if ( $s['splash_image'] ) : ?>
+									<img src="<?php echo esc_url( $s['splash_image'] ); ?>" alt="" style="width:auto;height:160px;border-radius:12px;">
+								<?php endif; ?>
+							</div>
+							<input type="hidden" id="a2hsp_splash_url" name="a2hsp_settings[splash_image]" value="<?php echo esc_attr( $s['splash_image'] ); ?>">
+							<button type="button" class="button" id="a2hsp-pick-splash">انتخاب از کتابخانه رسانه</button>
+							<button type="button" class="button" id="a2hsp-remove-splash">حذف</button>
+							<p class="description">تصویر عمودی (مثلاً ۱۲۹۰×۲۷۹۶) که هنگام باز شدن وب‌اپ در iOS نمایش داده می‌شود. در اندروید اسپلش به‌صورت خودکار از «رنگ پس‌زمینه اسپلش» + آیکون اپ + نام اپ ساخته می‌شود.</p>
+						</td>
+					</tr>
+					<tr>
 						<th scope="row">اسکرین‌شات‌ها (گالری پاپ‌آپ)</th>
 						<td>
 							<div id="a2hsp-shots" class="a2hsp-shots-admin">
@@ -205,6 +225,36 @@ function a2hsp_settings_page() {
 							<button type="button" class="button" id="a2hsp-add-shots">افزودن اسکرین‌شات</button>
 							<p class="description">تصاویر عمودی موبایل (نسبت ۹:۱۶ مثل ۱۰۸۰×۱۹۲۰). حداکثر ۸ تصویر. به‌صورت گالری قابل اسکرول در پاپ‌آپ نمایش داده می‌شوند.</p>
 						</td>
+					</tr>
+				</table>
+			</div>
+
+			<div id="a2hsp-tab-elements" class="a2hsp-tab">
+				<p style="margin-top:16px">هر المان پاپ‌آپ را می‌توانید جداگانه روشن یا خاموش کنید. متن هر بخش هم از تب «متن‌ها» قابل ویرایش است.</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row">برچسب زیرعنوان</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[show_subtitle]" value="1" <?php checked( $s['show_subtitle'], 1 ); ?>> نمایش برچسب «رایگان • بدون نیاز به اپ‌استور» کنار نام اپ</label></td>
+					</tr>
+					<tr>
+						<th scope="row">آدرس دامنه</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[show_host]" value="1" <?php checked( $s['show_host'], 1 ); ?>> نمایش دامنه سایت زیر نام اپ</label></td>
+					</tr>
+					<tr>
+						<th scope="row">توضیحات اپ</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[show_description]" value="1" <?php checked( $s['show_description'], 1 ); ?>> نمایش متن توضیحات زیر هدر</label></td>
+					</tr>
+					<tr>
+						<th scope="row">کارت‌های ویژگی</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[show_features]" value="1" <?php checked( $s['show_features'], 1 ); ?>> نمایش سه کارت ویژگی (آفلاین، سرعت، تمام‌صفحه)</label></td>
+					</tr>
+					<tr>
+						<th scope="row">گالری اسکرین‌شات</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[show_screenshots]" value="1" <?php checked( $s['show_screenshots'], 1 ); ?>> نمایش گالری اسکرین‌شات‌ها</label></td>
+					</tr>
+					<tr>
+						<th scope="row">دکمه «بعداً»</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[show_later]" value="1" <?php checked( $s['show_later'], 1 ); ?>> نمایش دکمه «بعداً» زیر دکمه نصب</label></td>
 					</tr>
 				</table>
 			</div>

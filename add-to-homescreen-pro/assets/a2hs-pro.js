@@ -13,6 +13,46 @@
     return SHOW[key] === undefined || !!SHOW[key];
   }
 
+  /* ================= Head fixes (theme color / viewport) ================= */
+
+  /*
+   * Themes often print their own <meta name="theme-color">, and browsers
+   * honor only one of them — force every instance to the plugin color so
+   * the browser bar matches the admin setting.
+   */
+  if (D.themeColor) {
+    var tcMetas = document.querySelectorAll('meta[name="theme-color"]');
+    if (tcMetas.length) {
+      for (var ti = 0; ti < tcMetas.length; ti++) {
+        tcMetas[ti].setAttribute('content', D.themeColor);
+      }
+    } else {
+      var tc = document.createElement('meta');
+      tc.name = 'theme-color';
+      tc.content = D.themeColor;
+      document.head.appendChild(tc);
+    }
+  }
+
+  /*
+   * env(safe-area-inset-top) — used to paint the iOS standalone status
+   * bar — only reports real values with viewport-fit=cover.
+   */
+  (function () {
+    var vp = document.querySelector('meta[name="viewport"]');
+    if (vp) {
+      var c = vp.getAttribute('content') || '';
+      if (!/viewport-fit/i.test(c)) {
+        vp.setAttribute('content', c ? c + ', viewport-fit=cover' : 'width=device-width, initial-scale=1, viewport-fit=cover');
+      }
+    } else {
+      vp = document.createElement('meta');
+      vp.name = 'viewport';
+      vp.content = 'width=device-width, initial-scale=1, viewport-fit=cover';
+      document.head.appendChild(vp);
+    }
+  })();
+
   /* ================= Service worker ================= */
   if ('serviceWorker' in navigator && D.swUrl) {
     window.addEventListener('load', function () {

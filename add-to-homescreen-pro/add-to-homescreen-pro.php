@@ -3,7 +3,7 @@
  * Plugin Name: Add to Home Screen Pro (PWA)
  * Plugin URI:  https://example.com/add-to-homescreen-pro
  * Description: پاپ‌آپ تمام‌صفحه نصب وب‌اپ به سبک اپ‌استور — با گالری اسکرین‌شات، راهنمای اختصاصی هر مرورگر (Safari ،Chrome iOS، سامسونگ، فایرفاکس، مرورگر داخلی اینستاگرام/تلگرام)، حالت تیره، و پنل تنظیمات کامل.
- * Version:     2.1.0
+ * Version:     2.2.0
  * Author:      You
  * License:     GPL-2.0+
  * Text Domain: a2hsp
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'A2HSP_VERSION', '2.1.0' );
+define( 'A2HSP_VERSION', '2.2.0' );
 define( 'A2HSP_URL', plugin_dir_url( __FILE__ ) );
 define( 'A2HSP_PATH', plugin_dir_path( __FILE__ ) );
 
@@ -39,6 +39,7 @@ function a2hsp_default_settings() {
 		'display_style'    => 'sheet',      // sheet | fullscreen
 		'dark_mode'        => 'auto',       // auto | light | dark
 		'direction'        => 'rtl',        // rtl | ltr
+		'ios_statusbar'    => 1,            // paint iOS standalone status bar with theme color
 		// Element visibility toggles
 		'show_subtitle'    => 1,
 		'show_host'        => 1,
@@ -148,6 +149,175 @@ function a2hsp_maybe_output_manifest() {
 
 /**
  * ---------------------------------------------------------------
+ *  iOS splash screens  (served at /?a2hsp_splash=WxH)
+ *
+ *  iOS only shows apple-touch-startup-image when the PNG matches the
+ *  device's exact pixel resolution, so we render one per device size
+ *  with GD and cache it in the uploads folder.
+ * ---------------------------------------------------------------
+ */
+
+/**
+ * Portrait device list: array( css-width, css-height, device-pixel-ratio )
+ */
+function a2hsp_splash_devices() {
+	return array(
+		array( 320, 568, 2 ),
+		array( 375, 667, 2 ),
+		array( 414, 736, 3 ),
+		array( 375, 812, 3 ),
+		array( 390, 844, 3 ),
+		array( 393, 852, 3 ),
+		array( 414, 896, 2 ),
+		array( 414, 896, 3 ),
+		array( 428, 926, 3 ),
+		array( 430, 932, 3 ),
+		array( 768, 1024, 2 ),
+		array( 810, 1080, 2 ),
+		array( 834, 1112, 2 ),
+		array( 834, 1194, 2 ),
+		array( 1024, 1366, 2 ),
+	);
+}
+
+function a2hsp_hex_to_rgb( $hex ) {
+	$hex = ltrim( (string) $hex, '#' );
+	if ( 3 === strlen( $hex ) ) {
+		$hex = $hex[0] . $hex[0] . $hex[1] . $hex[1] . $hex[2] . $hex[2];
+	}
+	if ( 6 !== strlen( $hex ) ) {
+		$hex = '123F76';
+	}
+	return array( hexdec( substr( $hex, 0, 2 ) ), hexdec( substr( $hex, 2, 2 ) ), hexdec( substr( $hex, 4, 2 ) ) );
+}
+
+/**
+ * Load a GD image from a media URL (local attachment path preferred).
+ */
+function a2hsp_load_image( $url ) {
+	if ( ! $url ) {
+		return false;
+	}
+	$data = false;
+	$id   = attachment_url_to_postid( $url );
+	if ( $id ) {
+		$path = get_attached_file( $id );
+		if ( $path && file_exists( $path ) ) {
+			$data = file_get_contents( $path );
+		}
+	}
+	if ( ! $data ) {
+		$res = wp_remote_get( $url, array( 'timeout' => 10 ) );
+		if ( ! is_wp_error( $res ) && 200 === wp_remote_retrieve_response_code( $res ) ) {
+			$data = wp_remote_retrieve_body( $res );
+		}
+	}
+	if ( ! $data ) {
+		return false;
+	}
+	$img = @imagecreatefromstring( $data );
+	if ( $img ) {
+		if ( function_exists( 'imagepalettetotruecolor' ) ) {
+			imagepalettetotruecolor( $img );
+		}
+		imagealphablending( $img, true );
+		imagesavealpha( $img, true );
+	}
+	return $img ? $img : false;
+}
+
+/**
+ * Render (and cache) a splash PNG at the exact requested pixel size.
+ * Uses the uploaded splash image (cover-cropped); falls back to
+ * background color + centered app icon, mirroring Android's splash.
+ */
+function a2hsp_generate_splash( $w, $h ) {
+	if ( ! function_exists( 'imagecreatetruecolor' ) ) {
+		return false;
+	}
+	$s      = a2hsp_get_settings();
+	$icon   = $s['icon_url'] ? $s['icon_url'] : get_site_icon_url( 512 );
+	$upload = wp_upload_dir();
+	$dir    = $upload['basedir'] . '/a2hsp-splash';
+	$sig    = substr( md5( $s['splash_image'] . '|' . $icon . '|' . $s['background_color'] ), 0, 12 );
+	$file   = $dir . '/splash-' . $sig . '-' . $w . 'x' . $h . '.png';
+
+	if ( file_exists( $file ) ) {
+		return $file;
+	}
+	if ( ! wp_mkdir_p( $dir ) ) {
+		return false;
+	}
+
+	$img = imagecreatetruecolor( $w, $h );
+	list( $r, $g, $b ) = a2hsp_hex_to_rgb( $s['background_color'] );
+	imagefill( $img, 0, 0, imagecolorallocate( $img, $r, $g, $b ) );
+	imagealphablending( $img, true );
+
+	if ( $s['splash_image'] && ( $src = a2hsp_load_image( $s['splash_image'] ) ) ) {
+		// Cover: scale to fill the canvas, center-cropped
+		$sw    = imagesx( $src );
+		$sh    = imagesy( $src );
+		$scale = max( $w / $sw, $h / $sh );
+		$nw    = (int) round( $sw * $scale );
+		$nh    = (int) round( $sh * $scale );
+		imagecopyresampled( $img, $src, (int) ( ( $w - $nw ) / 2 ), (int) ( ( $h - $nh ) / 2 ), 0, 0, $nw, $nh, $sw, $sh );
+		imagedestroy( $src );
+	} elseif ( $icon && ( $src = a2hsp_load_image( $icon ) ) ) {
+		// Background color + centered icon (~30% of width)
+		$sw = imagesx( $src );
+		$sh = imagesy( $src );
+		$tw = (int) round( $w * 0.3 );
+		$th = (int) round( $tw * $sh / $sw );
+		imagecopyresampled( $img, $src, (int) ( ( $w - $tw ) / 2 ), (int) ( ( $h - $th ) / 2 ), 0, 0, $tw, $th, $sw, $sh );
+		imagedestroy( $src );
+	}
+
+	imagepng( $img, $file, 6 );
+	imagedestroy( $img );
+	return file_exists( $file ) ? $file : false;
+}
+
+add_action( 'template_redirect', 'a2hsp_maybe_output_splash', 0 );
+function a2hsp_maybe_output_splash() {
+	if ( ! isset( $_GET['a2hsp_splash'] ) ) {
+		return;
+	}
+	$size = sanitize_text_field( wp_unslash( $_GET['a2hsp_splash'] ) );
+	if ( ! preg_match( '/^(\d{3,4})x(\d{3,4})$/', $size, $m ) ) {
+		status_header( 404 );
+		exit;
+	}
+	$w = (int) $m[1];
+	$h = (int) $m[2];
+
+	// Only whitelisted device resolutions are rendered
+	$allowed = false;
+	foreach ( a2hsp_splash_devices() as $d ) {
+		if ( $d[0] * $d[2] === $w && $d[1] * $d[2] === $h ) {
+			$allowed = true;
+			break;
+		}
+	}
+	if ( ! $allowed ) {
+		status_header( 404 );
+		exit;
+	}
+
+	$file = a2hsp_generate_splash( $w, $h );
+	if ( ! $file ) {
+		status_header( 404 );
+		exit;
+	}
+	header( 'Content-Type: image/png' );
+	header( 'Cache-Control: public, max-age=31536000, immutable' );
+	header( 'Content-Length: ' . filesize( $file ) );
+	readfile( $file );
+	exit;
+}
+
+/**
+ * ---------------------------------------------------------------
  *  Service Worker  (served at /?a2hsp_sw=1)
  * ---------------------------------------------------------------
  */
@@ -219,30 +389,27 @@ function a2hsp_head_tags() {
 	}
 
 	/*
-	 * iOS splash screen (apple-touch-startup-image).
-	 * Android splash is generated automatically from the manifest
-	 * (background_color + icon + name); iOS needs explicit links
-	 * with device media queries.
+	 * iOS splash screens (apple-touch-startup-image).
+	 * iOS ignores images whose pixel size doesn't exactly match the
+	 * device, so each link points at the server-side generator that
+	 * renders the exact resolution. Android splash comes from the
+	 * manifest automatically.
 	 */
-	if ( $s['splash_image'] ) {
-		$devices = array(
-			array( 320, 568, 2 ),
-			array( 375, 667, 2 ),
-			array( 414, 736, 3 ),
-			array( 375, 812, 3 ),
-			array( 390, 844, 3 ),
-			array( 393, 852, 3 ),
-			array( 414, 896, 2 ),
-			array( 414, 896, 3 ),
-			array( 428, 926, 3 ),
-			array( 430, 932, 3 ),
-			array( 768, 1024, 2 ),
-			array( 810, 1080, 2 ),
-			array( 834, 1112, 2 ),
-			array( 834, 1194, 2 ),
-			array( 1024, 1366, 2 ),
-		);
-		foreach ( $devices as $d ) {
+	if ( function_exists( 'imagecreatetruecolor' ) ) {
+		foreach ( a2hsp_splash_devices() as $d ) {
+			$href = add_query_arg( 'a2hsp_splash', ( $d[0] * $d[2] ) . 'x' . ( $d[1] * $d[2] ), home_url( '/' ) );
+			printf(
+				'<link rel="apple-touch-startup-image" media="(device-width: %1$dpx) and (device-height: %2$dpx) and (-webkit-device-pixel-ratio: %3$d) and (orientation: portrait)" href="%4$s">' . "\n",
+				$d[0],
+				$d[1],
+				$d[2],
+				esc_url( $href )
+			);
+		}
+	} elseif ( $s['splash_image'] ) {
+		// No GD on this server: fall back to the raw image (works only
+		// on devices whose resolution happens to match it)
+		foreach ( a2hsp_splash_devices() as $d ) {
 			printf(
 				'<link rel="apple-touch-startup-image" media="(device-width: %1$dpx) and (device-height: %2$dpx) and (-webkit-device-pixel-ratio: %3$d) and (orientation: portrait)" href="%4$s">' . "\n",
 				$d[0],
@@ -251,6 +418,20 @@ function a2hsp_head_tags() {
 				esc_url( $s['splash_image'] )
 			);
 		}
+	}
+
+	/*
+	 * iOS standalone status bar tint.
+	 * In an installed web app iOS ignores theme-color; the only way to
+	 * get a colored bar is black-translucent + painting the top
+	 * safe-area ourselves.
+	 */
+	if ( ! empty( $s['ios_statusbar'] ) ) {
+		echo '<style id="a2hsp-statusbar">@media all and (display-mode: standalone){'
+			. 'body{padding-top:env(safe-area-inset-top,0px) !important;}'
+			. 'body::before{content:"";position:fixed;top:0;left:0;right:0;height:env(safe-area-inset-top,0px);'
+			. 'background:' . esc_attr( $s['theme_color'] ) . ';z-index:2147483647;pointer-events:none;}'
+			. '}</style>' . "\n";
 	}
 }
 
@@ -291,6 +472,7 @@ function a2hsp_enqueue_assets() {
 		'maxDisplay'  => (int) $s['max_display'],
 		'minVisits'   => (int) $s['min_visits'],
 		'desktop'     => (int) $s['show_on_desktop'],
+		'themeColor'  => $s['theme_color'],
 		'host'        => wp_parse_url( home_url(), PHP_URL_HOST ),
 		'show'        => array(
 			'subtitle'    => (int) $s['show_subtitle'],

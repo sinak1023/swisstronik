@@ -65,6 +65,7 @@ function a2hsp_sanitize( $input ) {
 	$out['background_color'] = sanitize_hex_color( $input['background_color'] ?? '' ) ?: $d['background_color'];
 	$out['accent_color']     = sanitize_hex_color( $input['accent_color'] ?? '' ) ?: $d['accent_color'];
 
+	$out['ios_statusbar'] = empty( $input['ios_statusbar'] ) ? 0 : 1;
 	$out['display_style'] = in_array( $input['display_style'] ?? '', array( 'sheet', 'fullscreen' ), true ) ? $input['display_style'] : 'sheet';
 	$out['dark_mode']     = in_array( $input['dark_mode'] ?? '', array( 'auto', 'light', 'dark' ), true ) ? $input['dark_mode'] : 'auto';
 	$out['direction']     = in_array( $input['direction'] ?? '', array( 'rtl', 'ltr' ), true ) ? $input['direction'] : 'rtl';
@@ -85,6 +86,15 @@ function a2hsp_sanitize( $input ) {
 		$out[ $key ] = sanitize_text_field( $input[ $key ] ?? $d[ $key ] );
 	}
 	$out['txt_features'] = sanitize_textarea_field( $input['txt_features'] ?? $d['txt_features'] );
+
+	// Purge cached splash PNGs so they regenerate with the new settings
+	$upload = wp_upload_dir();
+	$dir    = $upload['basedir'] . '/a2hsp-splash';
+	if ( is_dir( $dir ) ) {
+		foreach ( (array) glob( $dir . '/splash-*.png' ) as $old ) {
+			@unlink( $old );
+		}
+	}
 
 	return $out;
 }
@@ -171,7 +181,13 @@ function a2hsp_settings_page() {
 					</tr>
 					<tr>
 						<th scope="row"><label>رنگ تم مرورگر (theme color)</label></th>
-						<td><input type="text" class="a2hsp-color" name="a2hsp_settings[theme_color]" value="<?php echo esc_attr( $s['theme_color'] ); ?>"></td>
+						<td><input type="text" class="a2hsp-color" name="a2hsp_settings[theme_color]" value="<?php echo esc_attr( $s['theme_color'] ); ?>">
+						<p class="description">رنگ نوار بالای مرورگر در اندروید و Safari. اگر قالب سایت خودش theme-color داشته باشد، پلاگین آن را بازنویسی می‌کند.</p></td>
+					</tr>
+					<tr>
+						<th scope="row">نوار وضعیت iOS (وب‌اپ)</th>
+						<td><label><input type="checkbox" name="a2hsp_settings[ios_statusbar]" value="1" <?php checked( $s['ios_statusbar'], 1 ); ?>> در حالت وب‌اپ نصب‌شده در آیفون، نوار وضعیت با «رنگ تم» رنگ شود</label>
+						<p class="description">iOS در وب‌اپ theme-color را نمی‌خواند؛ این گزینه ناحیه بالای صفحه را با CSS رنگ می‌کند.</p></td>
 					</tr>
 					<tr>
 						<th scope="row"><label>رنگ پس‌زمینه اسپلش</label></th>

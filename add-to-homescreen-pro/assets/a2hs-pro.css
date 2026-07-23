@@ -1,0 +1,560 @@
+/* ============================================================
+   Add to Home Screen Pro — app-store style install sheet
+   ============================================================ */
+
+.a2hsp-root {
+  --a2hsp-accent: #4f46e5;
+  --a2hsp-bg: #ffffff;
+  --a2hsp-fg: #0f172a;
+  --a2hsp-muted: #64748b;
+  --a2hsp-line: rgba(15, 23, 42, 0.08);
+  --a2hsp-chip: #f1f5f9;
+  position: fixed;
+  inset: 0;
+  z-index: 999999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Vazirmatn, Tahoma, sans-serif;
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .a2hsp-root:not(.a2hsp-light) {
+    --a2hsp-bg: #16181d;
+    --a2hsp-fg: #f1f5f9;
+    --a2hsp-muted: #94a3b8;
+    --a2hsp-line: rgba(241, 245, 249, 0.09);
+    --a2hsp-chip: #23262d;
+  }
+}
+.a2hsp-root.a2hsp-dark {
+  --a2hsp-bg: #16181d;
+  --a2hsp-fg: #f1f5f9;
+  --a2hsp-muted: #94a3b8;
+  --a2hsp-line: rgba(241, 245, 249, 0.09);
+  --a2hsp-chip: #23262d;
+}
+
+html.a2hsp-lock,
+html.a2hsp-lock body {
+  overflow: hidden !important;
+  overscroll-behavior: none;
+}
+
+/* ---------- backdrop: covers the entire page ---------- */
+.a2hsp-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 10, 18, 0.55);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: auto;
+}
+.a2hsp-root.a2hsp-show .a2hsp-backdrop {
+  opacity: 1;
+}
+
+/* ---------- panel ---------- */
+.a2hsp-panel {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  max-height: 92dvh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--a2hsp-bg);
+  color: var(--a2hsp-fg);
+  border-radius: 28px 28px 0 0;
+  padding: 10px 22px calc(24px + env(safe-area-inset-bottom, 0px));
+  box-shadow: 0 -18px 60px rgba(0, 0, 0, 0.35);
+  transform: translateY(105%);
+  transition: transform 0.42s cubic-bezier(0.32, 0.72, 0.28, 1);
+  pointer-events: auto;
+  scrollbar-width: none;
+}
+.a2hsp-panel::-webkit-scrollbar {
+  display: none;
+}
+.a2hsp-root.a2hsp-show .a2hsp-panel {
+  transform: translateY(0);
+}
+
+/* fullscreen variant */
+.a2hsp-root.a2hsp-fullscreen .a2hsp-panel {
+  max-width: 100%;
+  height: 100%;
+  max-height: 100vh;
+  max-height: 100dvh;
+  border-radius: 0;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+.a2hsp-root.a2hsp-fullscreen .a2hsp-handle {
+  display: none;
+}
+.a2hsp-root.a2hsp-fullscreen .a2hsp-panel {
+  justify-content: safe center;
+}
+
+/* extra room so the bouncing arrow never covers the last step */
+.a2hsp-root.a2hsp-has-arrow .a2hsp-panel {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+/* desktop: centered card */
+@media (min-width: 640px) {
+  .a2hsp-root {
+    align-items: center;
+  }
+  .a2hsp-panel,
+  .a2hsp-root.a2hsp-fullscreen .a2hsp-panel {
+    border-radius: 28px;
+    height: auto;
+    max-height: 88vh;
+    transform: translateY(24px) scale(0.96);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0.28, 1), opacity 0.3s ease;
+  }
+  .a2hsp-root.a2hsp-show .a2hsp-panel {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---------- handle & close ---------- */
+.a2hsp-handle {
+  width: 42px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--a2hsp-line);
+  margin: 4px auto 14px;
+}
+.a2hsp-close {
+  position: absolute;
+  top: 14px;
+  inset-inline-start: 14px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--a2hsp-chip);
+  color: var(--a2hsp-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+.a2hsp-close:active {
+  transform: scale(0.9);
+}
+
+/* ---------- app header ---------- */
+.a2hsp-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 6px 0 4px;
+}
+.a2hsp-icon {
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--a2hsp-chip);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  animation: a2hsp-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+}
+.a2hsp-icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+@keyframes a2hsp-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.a2hsp-meta {
+  min-width: 0;
+}
+.a2hsp-name {
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+.a2hsp-host {
+  font-size: 12px;
+  color: var(--a2hsp-muted);
+  direction: ltr;
+  text-align: start;
+  unicode-bidi: plaintext;
+  margin-top: 2px;
+}
+.a2hsp-sub {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--a2hsp-accent);
+  background: color-mix(in srgb, var(--a2hsp-accent) 12%, transparent);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+@supports not (background: color-mix(in srgb, red 10%, blue)) {
+  .a2hsp-sub {
+    background: var(--a2hsp-chip);
+  }
+}
+
+/* ---------- description ---------- */
+.a2hsp-desc {
+  margin: 14px 0 0;
+  font-size: 13.5px;
+  line-height: 1.9;
+  color: var(--a2hsp-muted);
+}
+
+/* ---------- features ---------- */
+.a2hsp-features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 18px;
+}
+.a2hsp-feature {
+  background: var(--a2hsp-chip);
+  border-radius: 16px;
+  padding: 12px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.a2hsp-feature-ic {
+  width: 26px;
+  height: 26px;
+  color: var(--a2hsp-accent);
+}
+.a2hsp-feature-ic svg {
+  width: 100%;
+  height: 100%;
+}
+.a2hsp-feature-tx {
+  font-size: 11px;
+  line-height: 1.7;
+  color: var(--a2hsp-fg);
+  font-weight: 500;
+}
+
+/* ---------- screenshots gallery ---------- */
+.a2hsp-shots {
+  display: flex;
+  gap: 10px;
+  margin: 18px -22px 0;
+  padding: 0 22px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.a2hsp-shots::-webkit-scrollbar {
+  display: none;
+}
+.a2hsp-shot {
+  flex: 0 0 auto;
+  height: 300px;
+  width: auto;
+  max-width: 70%;
+  border-radius: 18px;
+  border: 1px solid var(--a2hsp-line);
+  scroll-snap-align: center;
+  object-fit: cover;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- body / CTA ---------- */
+.a2hsp-body {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.a2hsp-cta {
+  width: 100%;
+  border: 0;
+  border-radius: 16px;
+  padding: 16px;
+  font-size: 16px;
+  font-weight: 800;
+  font-family: inherit;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(
+    135deg,
+    var(--a2hsp-accent),
+    color-mix(in srgb, var(--a2hsp-accent) 70%, #000)
+  );
+  box-shadow: 0 10px 26px color-mix(in srgb, var(--a2hsp-accent) 45%, transparent);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  position: relative;
+  overflow: hidden;
+}
+@supports not (background: color-mix(in srgb, red 10%, blue)) {
+  .a2hsp-cta {
+    background: var(--a2hsp-accent);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.25);
+  }
+}
+.a2hsp-cta:active {
+  transform: scale(0.97);
+}
+.a2hsp-cta::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  animation: a2hsp-shine 3s ease infinite;
+}
+@keyframes a2hsp-shine {
+  0%, 60% {
+    left: -80%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+.a2hsp-later {
+  width: 100%;
+  border: 0;
+  background: none;
+  color: var(--a2hsp-muted);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 8px;
+  cursor: pointer;
+}
+
+/* ---------- guide steps ---------- */
+.a2hsp-guide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: a2hsp-fade 0.35s ease both;
+}
+@keyframes a2hsp-fade {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.a2hsp-guide-title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.a2hsp-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--a2hsp-chip);
+  border-radius: 14px;
+  padding: 12px 14px;
+}
+.a2hsp-step-num {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--a2hsp-accent);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.a2hsp-step-body {
+  font-size: 13.5px;
+  line-height: 1.9;
+}
+.a2hsp-inline-ic {
+  display: inline-flex;
+  vertical-align: middle;
+  width: 20px;
+  height: 20px;
+  margin: 0 3px;
+  color: var(--a2hsp-accent);
+}
+.a2hsp-inline-ic svg {
+  width: 100%;
+  height: 100%;
+}
+.a2hsp-ic-share svg {
+  animation: a2hsp-nudge 1.6s ease infinite;
+}
+@keyframes a2hsp-nudge {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+/* bouncing arrow pointing at Safari's share button */
+.a2hsp-arrow {
+  position: fixed;
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  margin-left: -20px;
+  color: var(--a2hsp-accent);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+  animation: a2hsp-bounce 1.2s ease infinite;
+  pointer-events: none;
+  z-index: 3;
+}
+.a2hsp-arrow svg {
+  width: 100%;
+  height: 100%;
+}
+@keyframes a2hsp-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+.a2hsp-arrow-top {
+  bottom: auto;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: auto;
+  inset-inline-end: 18px;
+  margin-left: 0;
+  transform: rotate(180deg);
+  animation: a2hsp-bounce-top 1.2s ease infinite;
+}
+@keyframes a2hsp-bounce-top {
+  0%, 100% {
+    transform: rotate(180deg) translateY(0);
+  }
+  50% {
+    transform: rotate(180deg) translateY(-12px);
+  }
+}
+
+/* ---------- in-app browser ---------- */
+.a2hsp-inapp-msg {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.9;
+}
+.a2hsp-copy-wrap {
+  display: flex;
+  justify-content: center;
+}
+.a2hsp-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1.5px solid var(--a2hsp-accent);
+  background: none;
+  color: var(--a2hsp-accent);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 700;
+  border-radius: 12px;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+
+/* ---------- success toast ---------- */
+.a2hsp-success {
+  position: fixed;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translate(-50%, 20px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #16a34a;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Vazirmatn, Tahoma, sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px 22px;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(22, 163, 74, 0.4);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 999999;
+}
+.a2hsp-success.a2hsp-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.a2hsp-success svg {
+  width: 28px;
+  height: 28px;
+  stroke: #fff;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.a2hsp-check-circle {
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-dasharray: 160;
+  stroke-dashoffset: 160;
+  animation: a2hsp-draw 0.7s ease forwards;
+}
+.a2hsp-check-mark {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: a2hsp-draw 0.5s ease 0.4s forwards;
+}
+@keyframes a2hsp-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ---------- manual open button (shortcode) ---------- */
+.a2hsp-open-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  background: #4f46e5;
+  cursor: pointer;
+}
